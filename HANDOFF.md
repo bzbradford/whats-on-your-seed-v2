@@ -9,7 +9,8 @@ _Last updated: 2026-11-25_
 - **Phase 1 (scaffold) done.** Svelte/Vite/TS/Tailwind app at the repo root with Vitest and Playwright; Pages and standalone builds.
 - **Phase 2 (pipeline) done locally.** The Python pipeline is in `pipeline/` (uv, pytest, ruff) and writes to the committed `public/data/`. A real EPA run on the new layout worked (880 products, workbook unchanged since 2026-09-21). The daily job is now `data-update.yml`.
 - The legacy app is frozen in `legacy/` as the parity reference (`python3 legacy/serve.py` to view it).
-- Next: confirm a manual `data-update` run on GitHub, then Phase 3: port the UI with **exact visual parity** to legacy (see PLAN.md).
+- A manual `data-update` run on GitHub succeeded end to end (EPA check → validate → bot commit → redeploy). It now runs daily at 06:37 Central.
+- Next: Phase 3: port the UI with **exact visual parity** to legacy (see PLAN.md).
 
 ## Things to know
 

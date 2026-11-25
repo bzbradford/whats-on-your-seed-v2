@@ -30,7 +30,7 @@ Goal: rebuild the legacy monolithic `legacy/static/index.html` (~125 KB, one inl
 - [x] Legacy app frozen under `legacy/` (with its own catalog snapshot) as the parity reference
 - [x] `data-update.yml` (replaces `seed-database-update.yml`): daily refresh → pytest + `pnpm verify` + e2e → commit `public/data/` → dispatch Pages deploy (GITHUB_TOKEN pushes don't trigger workflows)
 - [x] CI runs the pipeline job (ruff + pytest) alongside the web build; deploy needs both
-- [ ] First manual `data-update` run succeeds on GitHub
+- [x] First manual `data-update` run succeeded on GitHub (run 45663835699): bot commit → dispatched deploy → live `sync-status.json` updated
 - **Catalog split: deferred.** The 2.8 MB file is ~287 KB gzipped as served by Pages. Moving `target_pests_raw` (used only by the comparison matrix) to a lazy file would cut that to ~126 KB, but adds lazy-loading to compare, CSV export and the standalone build. Revisit after parity if load time matters.
 
 ### 3. Port the UI with exact visual parity
