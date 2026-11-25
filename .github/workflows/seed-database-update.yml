@@ -6,7 +6,7 @@ on:
       timezone: America/Chicago
   workflow_dispatch:
   push:
-    branches: [master]
+    branches: [main]
     paths:
       - '.github/workflows/seed-database-update.yml'
       - 'seed-treatment-database/scheduled_update.py'
@@ -31,7 +31,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: master
+          ref: main
       - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
@@ -46,7 +46,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p seed-treatment-database/private
-          SEED_ARTIFACT_RUN=$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=seed-catalog-sqlite&per_page=100" --jq '[.artifacts[] | select(.expired == false and .workflow_run.head_branch == "master")] | sort_by(.created_at) | reverse | .[0].workflow_run.id // empty')
+          SEED_ARTIFACT_RUN=$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=seed-catalog-sqlite&per_page=100" --jq '[.artifacts[] | select(.expired == false and .workflow_run.head_branch == "main")] | sort_by(.created_at) | reverse | .[0].workflow_run.id // empty')
           if [ -n "$SEED_ARTIFACT_RUN" ]; then
             gh run download "$SEED_ARTIFACT_RUN" --repo "$GITHUB_REPOSITORY" --name seed-catalog-sqlite --dir seed-treatment-database/private
           else
@@ -86,7 +86,7 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git commit -m 'Update seed database sources and check status'
           # A concurrent edit makes this ordinary push fail, rather than overwriting it.
-          git push origin HEAD:master
+          git push origin HEAD:main
       - name: Retain the published SQLite database for the next worker
         if: steps.refresh.outcome == 'success'
         uses: actions/upload-artifact@v7
