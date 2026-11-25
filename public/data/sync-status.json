@@ -1,22 +1,23 @@
 {
   "state": "success",
-  "outcome": "unchanged",
-  "publication_reasons": [],
-  "checked_at": "2026-11-25T17:25:37.645519+00:00",
-  "last_successful_sync": "2026-11-25T17:25:37.645519+00:00",
-  "last_publication_at": "2026-10-30T14:41:41.372337+00:00",
-  "message": "Sources checked; no new data. Published catalog unchanged.",
+  "outcome": "metadata_updated",
+  "publication_reasons": [
+    "automation"
+  ],
+  "checked_at": "2026-11-25T18:02:17.779873+00:00",
+  "last_publication_at": "2026-11-25T18:03:05.181969+00:00",
+  "message": "Catalog metadata published; source data unchanged.",
   "scheduler": {
     "kind": "GitHub Actions",
-    "cron": "37 6 * * *",
+    "cron": "30 6 * * 1",
     "timezone": "America/Chicago",
     "workflow_url": "https://github.com/bzbradford/whats-on-your-seed-v2/actions/workflows/data-update.yml"
   },
   "sources": {
     "EPA": {
       "state": "checked",
-      "checked_at": "2026-11-25T17:25:37.645519+00:00",
-      "attempted_at": "2026-11-25T17:25:37.645519+00:00",
+      "checked_at": "2026-11-25T18:02:17.779873+00:00",
+      "attempted_at": "2026-11-25T18:02:17.779873+00:00",
       "workbook_created": "2026-09-21",
       "source_url": "https://www3.epa.gov/pesticides/appril/apprildatadump_public.xlsx"
     },
@@ -32,17 +33,14 @@
     }
   },
   "workbook_sha256": "c8ae0c3f1d683914689d3b4e08904b4c617735b19120dc819412a70b652258bb",
+  "source_headers": {
+    "etag": "\"5df3f72-65c14a6838f07\"",
+    "last_modified": "Tue, 22 Sep 2026 16:13:43 GMT",
+    "content_length": "98516850"
+  },
   "changes": {
     "added": 0,
     "changed": 0,
     "removed": 0
-  },
-  "database_changes": {
-    "initialized": 880,
-    "added": 0,
-    "changed": 0,
-    "removed": 0,
-    "reactivated": 0,
-    "unchanged": 880
   }
 }
