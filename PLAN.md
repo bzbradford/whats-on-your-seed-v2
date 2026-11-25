@@ -104,6 +104,37 @@ After sign-off, parity was retired and these landed one commit each, with tests:
   - CPN logo link opens in a new tab (`rel="noopener noreferrer"`).
 - **Not changed (decision): "Needs review / missing fields" still includes base-linked distributor records.** The pipeline (`appril_workbook.py`) sets `ingredient_quality` to `missing` (no ingredients), `base-linked` (ingredients from the related base registration, `ingredient_basis: Related EPA base registration`), `partial` (a percentage missing) or `verified` (complete EPA product row). Base-linked records are not missing fields, but every part of the UI flags them for review ("Related base formulation · check distributor label"; "Distributor use claims can be narrower; verify the distributor label"), the option set reads as "complete EPA row" vs "base formulation" vs "everything that needs a second look", and the legacy logic tests assert `needs-review = not verified`. So it's a defensible, intended meaning, not clearly a bug. If the user wants "missing fields" only, it's a one-line change (`missing` or `partial`) plus relabelling; current data: 3 such records vs 188 today.
 
+### 4a. Layout and density (agreed 2026-11-25; build agent on branch `layout-density`)
+
+Goal: make the products view scannable and the page less tall, keep the Oct 19 character, and introduce Bits UI where it improves controls. Now that parity is retired, styling changes go in scoped component styles on top of `legacy.css`.
+
+1. **Card / List view pill.** A segmented pill toggle (Bits UI `ToggleGroup`) switches between:
+   - **List:** dense rows with sortable column headers in a sticky header row. Columns: product (name; registrant · EPA no.), active ingredients with %, purpose badges, signal word / RUP, FRAC/IRAC codes when assigned, crops (short), and label + compare actions. Clicking a row opens the existing detail dialog. On phones, rows stack compactly.
+   - **Card:** the friendlier view, slimmed down.
+
+   Both must show the most relevant facts per product. Remember the choice (localStorage in try/catch; the URL comes with 4b).
+
+2. **Cut per-product boilerplate:**
+   - the label-PDF explanation appears once, in the help text above the results
+   - FRAC/IRAC lines only when assigned
+   - the "N ingredients without a reviewed assignment" coverage line moves to the dialog
+   - the quality / status-date footer line is condensed
+3. **Sticky filter sidebar** on desktop (sticky, internal scroll if taller than the viewport). On phones, the "Show filters" button is pinned to the bottom of the screen.
+4. **Hero:**
+   - the title "What's on your seed?" on one line, with the hero shortened
+   - remove the 01/02/03 step strip (it duplicates the tabs)
+   - in `?embed`, the hero becomes a slim banner
+   - on phones, the tab bar becomes a single sideways-scrolling row
+5. **"EPA workbook loaded" notice → info, not a warning.** A short line by the result count ("880 products · EPA data as of …"), full details in the footer and the Sources tab. The "N records lack ingredients" warning becomes a flag on those records.
+6. **Bits UI** (`bits-ui`, as in the v1 project) where it fits: `Select` for sort and the single-choice filters, `ToggleGroup` for the view pill, `Accordion`/`Collapsible` for the filter groups, possibly a `Combobox`/`Popover` multi-select for crop sites, `Tooltip` for terse labels. Keep native elements where they work better (e.g. print). Keyboard and screen-reader behaviour must stay at least as good. The standalone single file must stay self-contained.
+7. **Before/after screenshots** at 1440 and 390 px for the user's review, plus updated e2e coverage for both views.
+
+### 4b. Shareable state and filtering (next batch)
+
+- Search, filters, sort, view mode and tab in the URL (shareable links, back button, pre-filtered embeds such as `?embed&crop=soybeans`)
+- Counts next to filter options (e.g. "Soybeans (412)")
+- Clicking an ingredient filters products to it
+
 ### 4. Embed and polish
 
 - [ ] Compact embed layout (`?embed`), test inside an iframe on a page from a different origin
@@ -174,6 +205,14 @@ Taken from the legacy `static/index.html`. Tick items when ported **and** tested
 ## Backlog
 
 - [ ] **Ask TELUS about the Label API** (formerly the CDMS API) for manufacturer specimen labels: terms for a non-commercial extension/university tool, and whether CPN's member universities already have a TELUS/CDMS relationship. If licensed: add a "Manufacturer label" link next to the EPA-accepted label, refreshed by the weekly job. Owner: the user / CPN. See "Labels" above.
+- [ ] **"Widely used" ranking (sort option and/or badge).** No free product-level usage data was found (2026-11-25):
+  - USGS county estimates are by active ingredient and [stopped including seed treatments in 2015](https://www.usgs.gov/data/estimated-annual-agricultural-pesticide-use-counties-conterminous-united-states-2013-17-ver-20).
+  - NASS chemical-use surveys and EPA usage estimates are also by active ingredient.
+  - Product-level data comes from Kynetec (paid; e.g. its dealer-applied corn seed treatment study).
+  - In-catalog proxies don't work: distributor-record counts rank only Bt traits (MON 810: 174), while CruiserMaxx, Poncho and Gaucho score 0.
+
+  Options: (a) a CPN-specialist-curated list per crop in `pipeline/reference/` (honest: "Widely used, per CPN specialists"); (b) Kynetec data if CPN or a member university has access. Decide on the source before building anything.
+
 - [ ] State registration selector: parked until a data source exists (see "Future: state registration").
 
 ## Open decisions
