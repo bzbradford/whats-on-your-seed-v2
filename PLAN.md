@@ -20,7 +20,7 @@ Goal: rebuild the legacy monolithic `seed-treatment-database/static/index.html` 
 - [x] Two build modes: Pages (fetches `data/catalog.json`) and single-file (`vite-plugin-singlefile`, catalog inlined)
 - [x] `?embed` view mode stub (hides title, fixed-height scroll)
 - [x] GitHub Actions: CI on PR/push; Pages deploy from `main`; standalone published as `whats-on-your-seed-standalone.html`
-- [ ] Confirm the first Pages deploy works (needs Actions enabled on the fork; see HANDOFF)
+- [x] First Pages deploy live at https://bzbradford.github.io/whats-on-your-seed-v2/
 - [ ] E2E test for the standalone file opened from `file://`
 
 ### 2. Pipeline

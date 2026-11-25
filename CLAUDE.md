@@ -57,6 +57,7 @@ python3 seed-treatment-database/test_project.py --require-node   # legacy suite
 
 ## Gotchas
 
+- `gh` defaults to the `upstream` remote when one exists. `gh repo set-default` has been set to the fork locally; pass `-R bzbradford/whats-on-your-seed-v2` in fresh clones.
 - TypeScript is pinned to 6.0.x: typescript-eslint and svelte-check don't support TS 7 yet.
 - Playwright's `webServer` must invoke `vite preview` directly, not through `pnpm`, or the server is orphaned and Playwright hangs on exit.
 - Don't `import` the catalog JSON as a module (TS would infer a type from 2.8 MB of JSON). Use `?raw` + `JSON.parse` + `parseCatalog`.
