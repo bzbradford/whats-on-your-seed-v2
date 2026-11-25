@@ -620,3 +620,30 @@ test.describe('embedding', () => {
     await expect(page.locator('a.brand')).toHaveAttribute('rel', /noopener/);
   });
 });
+
+test('newer supplemental-only labeling is linked next to the full label', async ({ page }) => {
+  const catalog = fixtureCatalog();
+  const product = catalog.products.find((p) => p.id === labelProduct.id)!;
+  const [a, b] = product.registration_number.split('-');
+  const url = `https://www3.epa.gov/pesticides/chem_search/ppls/${a.padStart(6, '0')}-${b.padStart(5, '0')}-20260101.pdf`;
+  Object.assign(product.safety, {
+    supplemental_labels: [{ url, date: '2026-01-01', description: 'Supplemental label: new use' }],
+  });
+  await freezeClock(page);
+  await serveFixture(page, catalog);
+  await page.goto('./');
+  await page.locator('#query').fill(product.id);
+  await expect(page.locator('.product')).toHaveCount(1);
+  const card = page.locator('.product .label-supplemental a');
+  await expect(card).toHaveAttribute('href', url);
+  await expect(card).toContainText('Supplemental labeling');
+  await expect(page.locator('.product .label-action')).toHaveAttribute(
+    'href',
+    product.safety.label_url!,
+  );
+  await expect(page.locator('.product .label-meta')).toContainText('acceptance letter');
+  await page.locator('.product-name').click();
+  const item = page.locator('#dialog-body .label-supplemental-list a');
+  await expect(item).toHaveAttribute('href', url);
+  await expect(item).toContainText('Supplemental label: new use');
+});

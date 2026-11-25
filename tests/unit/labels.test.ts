@@ -10,8 +10,10 @@ describe('labelAccess (ported from legacy logic_test)', () => {
   it('links the exact-registration EPA PDF', () => {
     const x = labelAccess(labelProduct);
     expect(x.pdf).toBe(labelProduct.safety.label_url);
-    expect(x.note).toMatch(/^EPA file dated /);
-    expect(labelActionText(labelProduct).title).toBe('Open / download label (PDF)');
+    expect(x.note).toMatch(/^EPA-accepted label, filed /);
+    expect(x.note).toContain('acceptance letter');
+    expect(x.supplemental).toEqual([]);
+    expect(labelActionText(labelProduct).title).toBe('EPA-accepted label (PDF)');
   });
 
   it('never gives a distributor a PDF, and keeps its full number in the note', () => {
@@ -80,5 +82,52 @@ describe('workbookLabelFile (safety panel link)', () => {
       }),
     ).toBeNull();
     expect(workbookLabelFile({ ...labelProduct, safety: {} })).toBeNull();
+  });
+});
+
+describe('supplemental-only labeling', () => {
+  const reg = labelProduct.registration_number;
+  const [a, b] = reg.split('-').map(Number);
+  const file = (date: string) =>
+    `https://www3.epa.gov/pesticides/chem_search/ppls/${String(a).padStart(6, '0')}-${String(b).padStart(5, '0')}-${date.replaceAll('-', '')}.pdf`;
+  const withSupplemental = (list: unknown[]) => ({
+    ...labelProduct,
+    safety: { ...labelProduct.safety, supplemental_labels: list as never },
+  });
+
+  it('lists guarded supplemental files and says so in the note', () => {
+    const x = labelAccess(
+      withSupplemental([{ url: file('2099-01-02'), date: '2099-01-02', description: 'New use' }]),
+    );
+    expect(x.pdf).toBe(labelProduct.safety.label_url);
+    expect(x.supplemental).toEqual([
+      { url: file('2099-01-02'), date: '2099-01-02', description: 'New use' },
+    ]);
+    expect(x.note).toContain('Newer supplemental labeling is listed separately');
+  });
+
+  it('drops supplemental files that fail the identity guards', () => {
+    const x = labelAccess(
+      withSupplemental([
+        { url: 'https://example.com/x.pdf', date: '2099-01-02', description: 'Other host' },
+        { url: file('2099-01-02'), date: '2099-01-03', description: 'Date mismatch' },
+        {
+          url: file('2099-01-02').replace(/\d{6}-/, '999999-'),
+          date: '2099-01-02',
+          description: 'Wrong reg',
+        },
+      ]),
+    );
+    expect(x.supplemental).toEqual([]);
+  });
+
+  it('never lists supplemental files for a distributor record', () => {
+    const x = labelAccess({
+      ...withSupplemental([
+        { url: file('2099-01-02'), date: '2099-01-02', description: 'New use' },
+      ]),
+      record_type: 'DP',
+    });
+    expect(x.supplemental).toEqual([]);
   });
 });

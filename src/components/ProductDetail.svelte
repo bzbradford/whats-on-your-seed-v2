@@ -33,10 +33,19 @@
         text="Search EPA label history"
       />{/if}
   </div>
+  {#if x.supplemental.length}
+    <p><strong>Newer supplemental labeling</strong> (adds to or changes the label above):</p>
+    <ul class="label-supplemental-list">
+      {#each x.supplemental as s (s.url)}
+        <li><ExtLink url={s.url} text={s.description + ' · ' + fmt(s.date)} /></li>
+      {/each}
+    </ul>
+  {/if}
   <p>{x.note}</p>
   <p class="small muted">
-    {x.pdf ? 'Source: the EPA label file listed in this product’s workbook row. ' : ''}An internet
-    connection is needed to open label documents. If a link fails, <ExtLink
+    {x.pdf
+      ? 'Source: the newest EPA file with a full label for this exact registration, from the files listed in its workbook row. '
+      : ''}An internet connection is needed to open label documents. If a link fails, <ExtLink
       url={EPA_LABEL_SEARCH}
       text="open EPA label search"
     /> and enter the full registration number above.
@@ -73,7 +82,7 @@
     <p>
       <ExtLink
         url={workbookLabel.url}
-        text={'EPA label file listed in the workbook · ' + fmt(workbookLabel.date)}
+        text={'EPA-accepted label listed in the workbook · ' + fmt(workbookLabel.date)}
       /><br /><span class="small muted">
         Exact registration match; file contents and current applicability have not been reviewed.
       </span>
@@ -204,3 +213,10 @@
     {/if}
   </div>
 </div>
+
+<style>
+  .label-supplemental-list {
+    margin: 0 0 12px;
+    padding-left: 1.25rem;
+  }
+</style>

@@ -4,6 +4,7 @@
   import { labelAccess } from '../lib/labels';
   import { coverageText, groupText, ingredientsEyebrow, quality } from '../lib/product-facts';
   import type { Product } from '../lib/types';
+  import ExtLink from './ExtLink.svelte';
   import LabelAction from './LabelAction.svelte';
   import PurposeBadge from './PurposeBadge.svelte';
   import SafetyBadges from './SafetyBadges.svelte';
@@ -72,7 +73,11 @@
     </span><span class="muted coverage">{coverageText(reference, p)}</span>
   </div>
   <div class="product-labels">
-    <LabelAction product={p} />
+    <LabelAction product={p} />{#each labelAccess(p).supplemental as s (s.url)}<span
+        class="label-supplemental"
+      >
+        <ExtLink url={s.url} text={'Supplemental labeling · ' + fmt(s.date)} />
+      </span>{/each}
     <p class="label-meta">{labelAccess(p).note}</p>
   </div>
   <div class="product-bottom">
@@ -89,3 +94,9 @@
     </label>
   </div>
 </article>
+
+<style>
+  .label-supplemental {
+    font-size: 0.8125rem;
+  }
+</style>

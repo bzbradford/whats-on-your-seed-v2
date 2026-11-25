@@ -160,18 +160,21 @@ Taken from the legacy `static/index.html`. Tick items when ported **and** tested
 
 ## Labels: EPA-accepted vs manufacturer labels (investigated 2026-11-25)
 
-**What we link today:** `safety.label_url` is the newest PPLS file listed in the APPRIL workbook for the exact Section 3 registration. A PPLS file is EPA's stamped-label package: a 1–3 page EPA acceptance letter, then the EPA-accepted master label. A sample of 19 random products all followed that pattern. Problems: the PDF opens on the letter; the newest file is sometimes _supplemental_ labeling (e.g. 100-1648) rather than the full label; master labels include bracketed optional text, alternate brand names (ABNs) and reviewer notes, so they're not the marketed container label.
+**What we link (updated 2026-11-25):** `safety.label_url` is the newest PPLS file for the exact Section 3 registration that holds a **full** label. A PPLS file is EPA's stamped-label package: a 1–3 page EPA acceptance letter, then the EPA-accepted master label (bracketed optional text, alternate brand names and reviewer notes included, so not the marketed container label). The UI calls it "EPA-accepted label (PDF)" and says the PDF opens with EPA's letter.
 
-**The user wants both:** the EPA-accepted label _and_ the manufacturer's marketed (specimen) label, rather than opening the EPA PDF at a particular page.
+**Supplemental-only files:** a full survey of the newest file for all 628 products (pypdf text, 2026-11-25) found only 3 products whose newest file is supplemental labeling without the full label: 264-968 Gaucho 600 (current, expires 2029), 62719-412 Laredo EC and 62719-493 Laredo EW (2007–08). Supplemental labeling that _includes_ the full label (e.g. 100-1648 Saltro, supplemental pages then the master label) is fine as is. 505 files had all four full-label sections; most of the rest are plant-incorporated-protectant (Bt trait) labels, which legitimately lack First Aid, plus 5 files with no extractable text. These files are listed in `pipeline/reference/label-files.json` (hand-reviewed); the pipeline links the newest full label and publishes newer supplemental-only files as `safety.supplemental_labels`, shown next to the label link. New supplemental-only files are **not** detected automatically; parsing every PDF weekly isn't worth it for ~0.5% of products. Add entries when one is found.
 
-**Manufacturer-label sources:**
+**Manufacturer (specimen) label sources:**
 
 - **TELUS Agronomy** (formerly Agrian) and **CDMS**, both now TELUS. Labels are manufacturer-approved. Licensable through the **TELUS Label API (formerly the CDMS API)** for ag-tech use; no public pricing. Agrian's terms: database content is for general information and doesn't replace the manufacturer's label.
 - **Greenbook** (Agworld/Semios): API by request, licensed commercially. Its terms (§9) restrict labels to individual non-commercial use and forbid giving third parties access or building a database from it; `/search` is disallowed in robots.txt.
 - **Manufacturer websites:** no common structure (some behind sign-up); scraping would be brittle and is not planned. Retailers (e.g. FBN) also host specimen labels.
-- **Plain link-outs** (search by reg number, no data copied) could not be verified: the Agrian/TELUS pages return 403 to automated fetches, CDMS search is JavaScript-only with no verified URL pattern, and Greenbook search is robots-disallowed. Would need checking by hand in a browser.
+- **Plain link-outs** (search by reg number, no data copied) could not be verified: the Agrian/TELUS pages return 403 to automated fetches, CDMS search is JavaScript-only with no verified URL pattern, and Greenbook search is robots-disallowed.
 
-**Next steps (pending the user):** (1) clearer wording on the EPA label link now ("EPA-accepted label, follows EPA's acceptance letter"); (2) pipeline: prefer the latest _full_ label over supplemental-only files; (3) ask TELUS about Label API terms for an extension/university non-commercial tool (CPN may already have a relationship); (4) if licensed, add a "Manufacturer label" link next to the EPA label.
+## Backlog
+
+- [ ] **Ask TELUS about the Label API** (formerly the CDMS API) for manufacturer specimen labels: terms for a non-commercial extension/university tool, and whether CPN's member universities already have a TELUS/CDMS relationship. If licensed: add a "Manufacturer label" link next to the EPA-accepted label, refreshed by the weekly job. Owner: the user / CPN. See "Labels" above.
+- [ ] State registration selector: parked until a data source exists (see "Future: state registration").
 
 ## Open decisions
 

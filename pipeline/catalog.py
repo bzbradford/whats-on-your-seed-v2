@@ -18,6 +18,7 @@ ROOT = pathlib.Path(__file__).resolve().parent
 SCOPE = json.loads((ROOT / 'reference/scope.json').read_text(encoding='utf-8'))
 INGREDIENTS = json.loads((ROOT / 'reference/ingredients.json').read_text(encoding='utf-8'))
 EDUCATION = json.loads((ROOT / 'reference/education.json').read_text(encoding='utf-8'))
+LABEL_FILES = json.loads((ROOT / 'reference/label-files.json').read_text(encoding='utf-8'))
 MAX_BYTES = 100 * 1024 * 1024
 
 
