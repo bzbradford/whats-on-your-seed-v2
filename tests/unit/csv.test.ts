@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   RESULTS_HEADERS,
+  exportToasts,
   csvCell,
   labelLinksCsv,
   matrixCsv,
@@ -91,5 +92,13 @@ describe('matrix CSV', () => {
     const ps = current.products.slice(0, 4);
     const csv = matrixCsv(current, ps);
     for (const p of ps) expect(csv).toContain(p.registration_number);
+  });
+});
+
+describe('export toasts', () => {
+  it('pluralise correctly', () => {
+    expect(exportToasts.results(1)).toBe('1 product exported with source and quality fields.');
+    expect(exportToasts.results(880)).toBe('880 products exported with source and quality fields.');
+    expect(exportToasts.labels(1)).toMatch(/^1 product exported in the label-link CSV/);
   });
 });

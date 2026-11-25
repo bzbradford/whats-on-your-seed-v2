@@ -46,7 +46,7 @@ describe('ingredient classification', () => {
     );
     const unknown = { name: 'Unknown thing', percent: 1, pc_code: null, cas: null };
     expect(coverageText(reference, { ...product('100-1508'), ingredients: [unknown] })).toBe(
-      '1 ingredient(s) without a reviewed FRAC/IRAC assignment',
+      '1 ingredient without a reviewed FRAC/IRAC assignment',
     );
   });
 });

@@ -2,7 +2,7 @@
 // EPA signal word / restricted-use classification and ingredient-data quality.
 // Ported from the legacy script; wording is part of the parity target.
 
-import { norm } from './format';
+import { count, norm } from './format';
 import type { Ingredient, IngredientReference, Product } from './types';
 
 export type ReferenceMap = Record<string, IngredientReference>;
@@ -44,7 +44,7 @@ export function coverageText(reference: ReferenceMap, p: Product): string {
   if (!p.ingredients.length) return 'Ingredients missing; groups unknown';
   const n = unmappedCount(reference, p);
   return n
-    ? `${n} ingredient(s) without a reviewed FRAC/IRAC assignment`
+    ? `${count(n, 'ingredient')} without a reviewed FRAC/IRAC assignment`
     : 'All listed ingredients have a reviewed FRAC/IRAC assignment';
 }
 

@@ -12,7 +12,7 @@
     importedAt,
     updateWarning,
   } from '../lib/currency';
-  import { fmt } from '../lib/format';
+  import { count, fmt } from '../lib/format';
   import ExtLink from './ExtLink.svelte';
   import Icon from './Icon.svelte';
 
@@ -175,9 +175,15 @@
     <dt>Catalog last changed</dt>
     <dd>{fmt(catalogLastChanged(app.catalog, app.status))}</dd>
     <dt>Greenbook</dt>
-    <dd>{m.greenbook?.state || 'Not connected'} · {m.greenbook?.matched || 0} matches</dd>
+    <dd>
+      {m.greenbook?.state || 'Not connected'} · {count(
+        m.greenbook?.matched || 0,
+        'match',
+        'matches',
+      )}
+    </dd>
     <dt>CDMS / TELUS</dt>
-    <dd>{m.cdms?.state || 'Not connected'} · {m.cdms?.matched || 0} matches</dd>
+    <dd>{m.cdms?.state || 'Not connected'} · {count(m.cdms?.matched || 0, 'match', 'matches')}</dd>
     <dt>Automatic updates</dt>
     <dd>{automaticUpdatesText(app.catalog, app.standalone, app.flags.usingEmbeddedSnapshot)}</dd>
   </dl>
@@ -205,11 +211,11 @@
     <dt>Status-date end</dt>
     <dd>{fmt(m.status_date_end)}</dd>
     <dt>Base-product formulations</dt>
-    <dd>{a.base_linked_formulations ?? 0} distributor records</dd>
+    <dd>{count(a.base_linked_formulations ?? 0, 'distributor record')}</dd>
     <dt>Missing formulations</dt>
     <dd>{a.missing_formulation_products ?? 0}</dd>
     <dt>Missing percentage</dt>
-    <dd>{a.missing_percent_products ?? 0} records</dd>
+    <dd>{count(a.missing_percent_products ?? 0, 'record')}</dd>
   </dl>
   <p>
     All 14 site names are matched exactly, ignoring capitalization and extra spaces. Crop groups are

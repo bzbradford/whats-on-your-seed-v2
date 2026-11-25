@@ -2,7 +2,7 @@
 // Ported from legacy `render()`; semantics (token search over a haystack, exact
 // site matching, signal "None reported" vs "Not supplied", date range) unchanged.
 
-import { localDate, norm, s, shortSite } from './format';
+import { fmt, localDate, norm, s, shortSite } from './format';
 import { moaGroups, ref, signalKey, type ReferenceMap } from './product-facts';
 import type { Catalog, Product } from './types';
 
@@ -165,26 +165,83 @@ export const QUALITY_LABELS: Record<Exclude<QualityFilter, ''>, string> = {
   'needs-review': 'Needs review',
 };
 
-/** Text of the applied-filter summary, in display order. */
-export function appliedFilters(f: Filters): string[] {
-  return [
-    ...f.sites.map(shortSite),
-    f.purpose,
-    f.technology,
-    f.manufacturer,
-    f.frac ? 'FRAC ' + f.frac : '',
-    f.irac ? 'IRAC ' + f.irac : '',
-    f.signal
-      ? 'Signal: ' +
+/** Option labels of the restricted-use filter, reused by its chip. */
+export const RUP_LABELS: Record<Exclude<RupFilter, ''>, string> = {
+  yes: 'Yes',
+  no: 'No',
+  unknown: 'Not supplied',
+};
+
+/** Which filter a chip clears: a field, one site, or the date range. */
+export type ChipKey =
+  | {
+      field:
+        | 'query'
+        | 'purpose'
+        | 'technology'
+        | 'manufacturer'
+        | 'frac'
+        | 'irac'
+        | 'signal'
+        | 'rup'
+        | 'quality';
+    }
+  | { site: string }
+  | { dates: true };
+
+export interface AppliedChip {
+  label: string;
+  key: ChipKey;
+}
+
+/**
+ * Applied-filter summary, in display order: search, sites, then the select filters,
+ * then the date range (only when it differs from the default: blank start, end at the
+ * import cutoff `defaultEndDate`).
+ */
+export function appliedFilters(f: Filters, defaultEndDate = ''): AppliedChip[] {
+  const chips: AppliedChip[] = [];
+  const add = (label: string, key: ChipKey) => label && chips.push({ label, key });
+  const q = f.query.trim();
+  if (q) add(`Search: “${q}”`, { field: 'query' });
+  for (const site of f.sites) add(shortSite(site), { site });
+  add(f.purpose, { field: 'purpose' });
+  add(f.technology, { field: 'technology' });
+  add(f.manufacturer, { field: 'manufacturer' });
+  if (f.frac) add('FRAC ' + f.frac, { field: 'frac' });
+  if (f.irac) add('IRAC ' + f.irac, { field: 'irac' });
+  if (f.signal)
+    add(
+      'Signal: ' +
         (f.signal === 'NONE'
           ? 'None reported'
           : f.signal === 'NOT_SUPPLIED'
             ? 'Not supplied'
-            : f.signal)
-      : '',
-    f.rup ? 'Restricted-use flag: ' + f.rup : '',
-    f.quality ? QUALITY_LABELS[f.quality] : '',
-  ].filter(Boolean);
+            : f.signal),
+      { field: 'signal' },
+    );
+  if (f.rup) add('Restricted-use flag: ' + RUP_LABELS[f.rup], { field: 'rup' });
+  if (f.quality) add(QUALITY_LABELS[f.quality], { field: 'quality' });
+  const endChanged = f.end !== defaultEndDate;
+  if (f.start || endChanged) {
+    const label =
+      f.start && f.end
+        ? `Status date: ${fmt(f.start)} – ${fmt(f.end)}`
+        : f.start
+          ? `Status date: from ${fmt(f.start)}`
+          : f.end
+            ? `Status date: to ${fmt(f.end)}`
+            : 'Status date: no end date';
+    add(label, { dates: true });
+  }
+  return chips;
+}
+
+/** Filters with one chip's filter cleared (dates go back to their defaults). */
+export function clearChip(f: Filters, key: ChipKey, defaultEndDate: string): Filters {
+  if ('site' in key) return { ...f, sites: f.sites.filter((x) => x !== key.site) };
+  if ('dates' in key) return { ...f, start: '', end: defaultEndDate };
+  return { ...f, [key.field]: '' };
 }
 
 export interface PageInfo {

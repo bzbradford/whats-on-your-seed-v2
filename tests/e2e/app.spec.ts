@@ -67,7 +67,7 @@ test.describe('products', () => {
     await page.getByRole('checkbox', { name: 'Barley (seed treatment)', exact: true }).check();
     await expect(page.locator('#count')).toHaveText('299 products');
     await expect(page.locator('#site-summary')).toHaveText('1 site selected');
-    await expect(page.locator('#applied')).toHaveText('Barley');
+    await expect(page.locator('#applied .chip')).toHaveText(['Barley×']);
     await page.locator('#reset').click();
     await expect(page.locator('#count')).toHaveText('880 products');
     await page.locator('#technology').selectOption('Plant-Incorp. Protectant');
@@ -95,6 +95,33 @@ test.describe('products', () => {
     );
     // User decision: no state registration UI.
     await expect(page.locator('#state, #state-status, #state-help, #matrix-state')).toHaveCount(0);
+  });
+
+  test('applied filters include search and dates, and each chip removes its filter', async ({
+    page,
+  }) => {
+    await page.locator('#query').fill('fludioxonil');
+    await page.getByText('Groups & EPA hazards', { exact: true }).click();
+    await page.locator('#rup').selectOption('no');
+    await page.getByText('Registration status & dates', { exact: true }).click();
+    await page.locator('#start').fill('2020-01-01');
+    await expect(page.locator('#applied .chip')).toHaveText([
+      'Search: “fludioxonil”×',
+      'Restricted-use flag: No×',
+      'Status date: Jan 1, 2020 – Oct 19, 2026×',
+    ]);
+    const before = await page.locator('#count').textContent();
+    await page.getByRole('button', { name: 'Remove filter: Search: “fludioxonil”' }).click();
+    await expect(page.locator('#query')).toHaveValue('');
+    await expect(page.locator('#count')).not.toHaveText(before!);
+    await expect(page.locator('#applied .chip').first()).toBeFocused();
+    await page.getByRole('button', { name: /Remove filter: Status date/ }).click();
+    await expect(page.locator('#start')).toHaveValue('');
+    await expect(page.locator('#end')).toHaveValue('2026-10-19');
+    await page.getByRole('button', { name: /Remove filter: Restricted-use/ }).click();
+    await expect(page.locator('#applied .chip')).toHaveCount(0);
+    await expect(page.locator('#count')).toBeFocused();
+    await expect(page.locator('#count')).toHaveText('880 products');
   });
 
   test('date range validation', async ({ page }) => {
@@ -155,7 +182,7 @@ test.describe('products', () => {
     const filtered = await downloadText(page, () => page.locator('#export-labels').click());
     expect(filtered.split('\r\n')).toHaveLength(2);
     expect(filtered).toContain('Lookup required');
-    await expect(page.locator('#toast')).toContainText('1 products exported in the label-link CSV');
+    await expect(page.locator('#toast')).toContainText('1 product exported in the label-link CSV');
     await page.locator('#reset').click();
     const all = await downloadText(page, () => page.locator('#export-labels').click());
     expect(all.split('\r\n')).toHaveLength(fixture.products.length + 1);
@@ -507,6 +534,30 @@ test.describe('mobile', () => {
         .first()
         .evaluate((e) => getComputedStyle(e).transitionDuration),
     ).toBe('0s');
+  });
+});
+
+test.describe('before the catalog loads', () => {
+  test('pager is hidden and exports are disabled', async ({ page }) => {
+    let release!: () => void;
+    const gate = new Promise<void>((r) => (release = r));
+    await freezeClock(page);
+    await page.route('**/data/catalog.json', async (route) => {
+      await gate;
+      await route.fulfill({
+        contentType: 'application/json',
+        body: JSON.stringify(fixtureCatalog()),
+      });
+    });
+    await page.goto('./');
+    await expect(page.locator('#notice')).toHaveText('Loading the database…');
+    await expect(page.locator('#pager')).toBeHidden();
+    await expect(page.locator('#export')).toBeDisabled();
+    await expect(page.locator('#export-labels')).toBeDisabled();
+    release();
+    await expect(page.locator('#count')).toHaveText('880 products');
+    await expect(page.locator('#pager')).toBeVisible();
+    await expect(page.locator('#export')).toBeEnabled();
   });
 });
 

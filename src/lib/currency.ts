@@ -6,7 +6,7 @@
 // (sync-status `last_publication_at`) plus the update history, and drop legacy's
 // "last EPA retrieval" date and its "EPA check not verified" / 48-hour overdue warnings.
 
-import { fmt } from './format';
+import { count, fmt } from './format';
 import type { Catalog, SyncStatus, UpdateHistoryEntry } from './types';
 
 export const REPOSITORY_URL = 'https://github.com/bzbradford/whats-on-your-seed-v2';
@@ -95,7 +95,9 @@ export function loadedNotice(
       `${catalog.products.length.toLocaleString()} active registrations from the supplied export, created ${fmt(m.source_snapshot_date)}. Imported ${fmt(importedAt(catalog))}. ` +
       `Catalog last changed ${fmt(catalogLastChanged(catalog, status))}. ` +
       (usingEmbeddedSnapshot ? 'This file is showing its embedded snapshot. ' : '') +
-      (missing ? missing + ' records lack ingredients and need an exclusion check.' : ''),
+      (missing
+        ? `${count(missing, 'record')} ${missing === 1 ? 'lacks' : 'lack'} ingredients and ${missing === 1 ? 'needs' : 'need'} an exclusion check.`
+        : ''),
   };
 }
 

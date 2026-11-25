@@ -1,6 +1,6 @@
 // Comparison selection (max four, insertion order) and the matrix picker search.
 
-import { norm } from './format';
+import { count as countOf, norm } from './format';
 import { ref } from './product-facts';
 import type { Catalog, Product } from './types';
 
@@ -95,7 +95,7 @@ export function matrixMatches(
 export function matrixMatchesText(count: number, selectedCount: number): string {
   return selectedCount >= MAX_COMPARE
     ? 'Four formulations selected. Remove one to add another.'
-    : `${count} available matches. Search names, ingredients, alternate names or EPA numbers.`;
+    : `${countOf(count, 'available match', 'available matches')}. Search names, ingredients, alternate names or EPA numbers.`;
 }
 
 /** Keep the picked id if it is still a match, else the first match, else ''. */

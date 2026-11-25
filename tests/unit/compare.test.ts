@@ -105,6 +105,7 @@ describe('matrix picker', () => {
     expect(matrixMatchesText(3, 1)).toBe(
       '3 available matches. Search names, ingredients, alternate names or EPA numbers.',
     );
+    expect(matrixMatchesText(1, 1)).toMatch(/^1 available match\. /);
     expect(matrixMatchesText(3, 4)).toBe('Four formulations selected. Remove one to add another.');
   });
 

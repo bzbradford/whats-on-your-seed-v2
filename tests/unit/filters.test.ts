@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   PAGE_SIZE,
   appliedFilters,
+  clearChip,
   categoryOptions,
   countText,
   filterProducts,
@@ -160,10 +161,11 @@ describe('result summary', () => {
     expect(siteSummary(['a', 'b'])).toBe('2 sites selected');
   });
 
-  it('lists applied filters in legacy order and wording', () => {
-    expect(
-      appliedFilters({
+  it('lists applied filters in display order with readable labels', () => {
+    const chips = appliedFilters(
+      {
         ...base(),
+        query: '  fludioxonil ',
         sites: ['Corn (seed treatment)'],
         purpose: 'Fungicide',
         technology: 'Conventional Chemical',
@@ -173,8 +175,13 @@ describe('result summary', () => {
         signal: 'NONE',
         rup: 'unknown',
         quality: 'needs-review',
-      }),
-    ).toEqual([
+        start: '2020-01-01',
+        end: '2026-10-19',
+      },
+      '2026-10-19',
+    );
+    expect(chips.map((c) => c.label)).toEqual([
+      'Search: “fludioxonil”',
       'Corn',
       'Fungicide',
       'Conventional Chemical',
@@ -182,10 +189,52 @@ describe('result summary', () => {
       'FRAC 4',
       'IRAC 4A',
       'Signal: None reported',
-      'Restricted-use flag: unknown',
+      'Restricted-use flag: Not supplied',
       'Needs review',
+      'Status date: Jan 1, 2020 – Oct 19, 2026',
     ]);
-    expect(appliedFilters(base())).toEqual([]);
+  });
+
+  it('labels the restricted-use chip like the filter options', () => {
+    const label = (rup: Filters['rup']) => appliedFilters({ ...base(), rup }, '')[0].label;
+    expect(label('yes')).toBe('Restricted-use flag: Yes');
+    expect(label('no')).toBe('Restricted-use flag: No');
+    expect(label('unknown')).toBe('Restricted-use flag: Not supplied');
+  });
+
+  it('shows the date range only when it differs from the default', () => {
+    const defaults = { ...base(), end: '2026-10-19' };
+    expect(appliedFilters(defaults, '2026-10-19')).toEqual([]);
+    expect(appliedFilters({ ...defaults, end: '2026-01-01' }, '2026-10-19')[0].label).toBe(
+      'Status date: to Jan 1, 2026',
+    );
+    expect(
+      appliedFilters({ ...defaults, end: '', start: '2026-01-01' }, '2026-10-19')[0].label,
+    ).toBe('Status date: from Jan 1, 2026');
+    expect(appliedFilters({ ...defaults, end: '' }, '2026-10-19')[0].label).toBe(
+      'Status date: no end date',
+    );
+  });
+
+  it('clears exactly the filter behind a chip', () => {
+    const f = {
+      ...base(),
+      query: 'x',
+      sites: ['Corn (seed treatment)', 'Wheat (seed treatment)'],
+      rup: 'yes' as const,
+      start: '2020-01-01',
+      end: '2021-01-01',
+    };
+    const chips = appliedFilters(f, '2026-10-19');
+    const byLabel = (l: string) => chips.find((c) => c.label.startsWith(l))!.key;
+    expect(clearChip(f, byLabel('Search'), '2026-10-19').query).toBe('');
+    expect(clearChip(f, byLabel('Corn'), '2026-10-19').sites).toEqual(['Wheat (seed treatment)']);
+    expect(clearChip(f, byLabel('Restricted'), '2026-10-19').rup).toBe('');
+    expect(clearChip(f, byLabel('Status date'), '2026-10-19')).toMatchObject({
+      start: '',
+      end: '2026-10-19',
+      query: 'x',
+    });
   });
 });
 

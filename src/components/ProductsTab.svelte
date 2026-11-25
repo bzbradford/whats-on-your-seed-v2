@@ -1,9 +1,22 @@
 <script lang="ts">
-  import { untrack } from 'svelte';
+  import { tick, untrack } from 'svelte';
   import { focusById } from '../lib/app-state.svelte';
   import { getApp } from '../lib/context';
-  import { downloadCsv, exportFileNames, labelLinksCsv, resultsCsv } from '../lib/csv';
-  import { DATE_ERROR, appliedFilters, siteSummary } from '../lib/filters';
+  import {
+    downloadCsv,
+    exportFileNames,
+    exportToasts,
+    labelLinksCsv,
+    resultsCsv,
+  } from '../lib/csv';
+  import {
+    DATE_ERROR,
+    appliedFilters,
+    clearChip,
+    defaultEnd,
+    siteSummary,
+    type AppliedChip,
+  } from '../lib/filters';
   import { localDate } from '../lib/format';
   import Icon from './Icon.svelte';
   import PrintViewButton from './PrintViewButton.svelte';
@@ -85,15 +98,23 @@
 
   function exportResults() {
     downloadCsv(resultsCsv(app.catalog, app.result.products), exportFileNames.results());
-    app.showToast(n + ' products exported with source and quality fields.');
+    app.showToast(exportToasts.results(n));
   }
 
   function exportLabels() {
     if (!n) return;
     downloadCsv(labelLinksCsv(app.result.products), exportFileNames.labels());
-    app.showToast(
-      n + ' products exported in the label-link CSV. PDF documents are opened separately.',
-    );
+    app.showToast(exportToasts.labels(n));
+  }
+
+  const chips = $derived(appliedFilters(app.filters, defaultEnd(app.catalog)));
+
+  /** Clear one applied filter; keep keyboard focus in the chip row (or the result count). */
+  async function removeChip(chip: AppliedChip, index: number) {
+    app.filters = clearChip(app.filters, chip.key, defaultEnd(app.catalog));
+    await tick();
+    const remaining = document.querySelectorAll<HTMLButtonElement>('#applied .chip');
+    (remaining[Math.min(index, remaining.length - 1)] ?? document.getElementById('count'))?.focus();
   }
 
   function goToPage(page: number) {
@@ -301,13 +322,13 @@
             bind:value={app.filters.query}
           />
         </div>
-        <button id="export" class="export" disabled={ready && !n} onclick={exportResults}>
+        <button id="export" class="export" disabled={!ready || !n} onclick={exportResults}>
           <Icon name="download" />Export results
         </button><button
           id="export-labels"
           class="export"
           aria-describedby="label-help"
-          disabled={ready && !n}
+          disabled={!ready || !n}
           onclick={exportLabels}
         >
           <Icon name="download" />Export label links
@@ -332,7 +353,14 @@
       </div>
       <div id="applied" class="applied" role="group" aria-label="Applied product filters">
         {#if ready && !app.result.invalidDates}
-          {#each appliedFilters(app.filters) as chip, i (i)}<span class="chip">{chip}</span>{/each}
+          {#each chips as chip, i (chip.label)}<button
+              type="button"
+              class="chip removable"
+              aria-label="Remove filter: {chip.label}"
+              onclick={() => removeChip(chip, i)}
+            >
+              {chip.label}<span aria-hidden="true">×</span>
+            </button>{/each}
         {/if}
       </div>
       <div id="results" role="region" aria-labelledby="count" bind:this={resultsEl}>
@@ -377,17 +405,17 @@
         id="pager"
         class="pager"
         aria-label="Product result pages"
-        hidden={ready && (app.result.invalidDates || !n)}
+        hidden={!ready || app.result.invalidDates || !n}
       >
         <button
           id="page-prev"
-          disabled={ready && app.pageInfo.page <= 1}
+          disabled={app.pageInfo.page <= 1}
           onclick={() => goToPage(Math.max(1, app.page - 1))}
         >
           ← Previous
         </button><span id="page-label">{ready ? app.pageInfo.label : ''}</span><button
           id="page-next"
-          disabled={ready && app.pageInfo.page >= app.pageInfo.pages}
+          disabled={app.pageInfo.page >= app.pageInfo.pages}
           onclick={() => goToPage(app.page + 1)}
         >
           Next →
@@ -409,6 +437,33 @@
     .pager,
     .mobile-filters {
       display: none !important;
+    }
+  }
+
+  /* Applied-filter chips are buttons that remove their filter; keep the Oct 19 chip look. */
+  .applied .chip.removable {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 32px;
+    padding: 4px 10px;
+    font-weight: 400;
+    color: #354936;
+    background: #edf1e8;
+    border: 1px solid #d0dbc7;
+    border-radius: 5px;
+  }
+  .applied .chip.removable:hover {
+    background: #e2eadb;
+    border-color: #99b59e;
+  }
+  .applied .chip.removable span {
+    font-size: 1rem;
+    line-height: 1;
+  }
+  @media print {
+    .applied .chip.removable span {
+      display: none;
     }
   }
 </style>

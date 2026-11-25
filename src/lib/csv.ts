@@ -2,7 +2,7 @@
 // Cells are always quoted, and values starting with = + - @ (after optional
 // whitespace) get a leading apostrophe so spreadsheets don't run them as formulas.
 
-import { localDate } from './format';
+import { count, localDate } from './format';
 import { labelAccess } from './labels';
 import { MATRIX_NOTE, matrixRows } from './matrix';
 import { quality, ref, rupText, signalText } from './product-facts';
@@ -159,6 +159,13 @@ export function matrixCsv(catalog: Catalog, products: Product[], today = localDa
     );
   return toCsv(rows);
 }
+
+/** Toasts after an export (legacy wording, correctly pluralised). */
+export const exportToasts = {
+  results: (n: number) => `${count(n, 'product')} exported with source and quality fields.`,
+  labels: (n: number) =>
+    `${count(n, 'product')} exported in the label-link CSV. PDF documents are opened separately.`,
+};
 
 export const exportFileNames = {
   results: (today = localDate()) => 'CPN-seed-treatment-' + today + '.csv',

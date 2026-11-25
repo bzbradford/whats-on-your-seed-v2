@@ -52,3 +52,8 @@ export function safeUrl(url: unknown): string {
 export function s(n: number): string {
   return n === 1 ? '' : 's';
 }
+
+/** "1 product", "2 products"; pass the plural for irregular words ("1 match", "2 matches"). */
+export function count(n: number, word: string, plural = word + 's'): string {
+  return `${n.toLocaleString()} ${n === 1 ? word : plural}`;
+}
