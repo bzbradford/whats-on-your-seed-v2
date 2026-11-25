@@ -51,8 +51,23 @@ async function started() {
   return app;
 }
 
+/** A newer publication: new time and hash in the status, newer catalog. */
+function publishNewer(rename?: { id: string; name: string }) {
+  const newer = fixtureCatalog();
+  newer.mode = 'live';
+  newer.meta.last_successful_sync = '2026-10-19T11:30:00Z';
+  if (rename) newer.products.find((p) => p.id === rename.id)!.name = rename.name;
+  files['catalog.json'] = newer;
+  files['sync-status.json'] = {
+    ...status(),
+    last_publication_at: '2026-10-26T12:00:00Z',
+    workbook_sha256: 'newer',
+  };
+}
+const catalogRequests = () => requests.filter((u) => u.endsWith('catalog.json')).length;
+
 describe('AppState loading and refresh', () => {
-  it('loads data/ relatively and polls every five minutes', async () => {
+  it('loads data/ relatively, then polls only the small status file every five minutes', async () => {
     const app = await started();
     expect(app.loadState).toBe('ready');
     expect(requests).toContain('./data/catalog.json');
@@ -61,7 +76,24 @@ describe('AppState loading and refresh', () => {
     expect(app.status?.message).toBe('Fixture status.');
     requests.length = 0;
     await vi.advanceTimersByTimeAsync(5 * 60 * 1000);
-    expect(requests).toContain('./data/catalog.json');
+    expect(requests).toContain('./data/sync-status.json');
+    expect(catalogRequests()).toBe(0);
+  });
+
+  it('refetches the catalog only when the status shows a new publication', async () => {
+    const app = await started();
+    requests.length = 0;
+    await app.poll();
+    expect(catalogRequests()).toBe(0);
+    publishNewer({ id: '100-1508', name: 'Updated fixture product' });
+    await app.poll();
+    expect(catalogRequests()).toBe(1);
+    expect(app.catalog.products.find((p) => p.id === '100-1508')?.name).toBe(
+      'Updated fixture product',
+    );
+    expect(app.status?.last_publication_at).toBe('2026-10-26T12:00:00Z');
+    await app.poll();
+    expect(catalogRequests()).toBe(1);
   });
 
   it('shows the unavailable state, then recovers on the next poll', async () => {
@@ -82,7 +114,7 @@ describe('AppState loading and refresh', () => {
     flushSync();
     app.page = 2;
     app.setComparison('100-1508', true);
-    files['sync-status.json'] = status('failed', 'Source check failed fixture.');
+    files['sync-status.json'] = { ...status('failed', 'Source check failed fixture.') };
     await app.poll();
     flushSync();
     expect(app.status?.state).toBe('failed');
@@ -91,11 +123,19 @@ describe('AppState loading and refresh', () => {
     expect(app.selected).toEqual(['100-1508']);
   });
 
-  it('flags failed status and catalog fetches but keeps the displayed catalog', async () => {
+  it('flags a failed status fetch without touching the catalog', async () => {
     const app = await started();
     files['sync-status.json'] = { state: 'success' };
+    requests.length = 0;
     await app.poll();
     expect(app.flags.statusPollFailed).toBe(true);
+    expect(app.flags.catalogPollFailed).toBe(false);
+    expect(catalogRequests()).toBe(0);
+  });
+
+  it('keeps the displayed catalog when the new one is malformed, and retries', async () => {
+    const app = await started();
+    publishNewer();
     const malformed = structuredClone(files['catalog.json']) as {
       products: Record<string, unknown>[];
     };
@@ -104,6 +144,11 @@ describe('AppState loading and refresh', () => {
     await app.poll();
     expect(app.flags.catalogPollFailed).toBe(true);
     expect(app.catalog.products[0].ingredients).toBeDefined();
+    expect(app.status?.last_publication_at).toBe('2026-10-19T12:00:00Z');
+    publishNewer({ id: '100-1508', name: 'Fixed' });
+    await app.poll();
+    expect(app.flags.catalogPollFailed).toBe(false);
+    expect(app.catalog.products.find((p) => p.id === '100-1508')?.name).toBe('Fixed');
   });
 
   it('replaces a changed catalog, keeping filters and selection, and says so', async () => {
@@ -112,10 +157,7 @@ describe('AppState loading and refresh', () => {
     app.filters.start = '2020-01-01';
     app.filters.end = '2026-10-01';
     app.setComparison('100-1508', true);
-    const newer = structuredClone(files['catalog.json']) as Catalog;
-    newer.meta.last_successful_sync = '2026-10-19T11:30:00Z';
-    newer.products.find((p) => p.id === '100-1508')!.name = 'Updated fixture product';
-    files['catalog.json'] = newer;
+    publishNewer({ id: '100-1508', name: 'Updated fixture product' });
     await app.poll();
     flushSync();
     expect(app.catalog.products.find((p) => p.id === '100-1508')?.name).toBe(

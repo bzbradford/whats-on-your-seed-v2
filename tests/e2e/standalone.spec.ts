@@ -85,7 +85,8 @@ test('offline: shows the embedded snapshot and says so', async ({ page }) => {
   expect(await page.locator('#guide a.guide-action').getAttribute('href')).toMatch(
     /^data:application\/pdf;base64,/,
   );
-  expect(remote.requests).toContain(PUBLISHED + 'catalog.json');
+  // Offline, it only got as far as the small status file.
+  expect(remote.requests).toContain(PUBLISHED + 'sync-status.json');
 });
 
 test('online: loads the published catalog, survives an outage, recovers', async ({ page }) => {
@@ -95,6 +96,8 @@ test('online: loads the published catalog, survives an outage, recovers', async 
   const status = {
     ...(publishedJson('sync-status.json') as object),
     message: 'Browser published status fixture.',
+    // A newer publication than the embedded one, so the file fetches the catalog.
+    last_publication_at: '2026-10-30T12:01:00Z',
   };
   const remote: Remote = { available: true, catalog, status, requests: [] };
   await page.clock.install({ time: new Date('2026-10-30T14:00:00Z') });
@@ -108,6 +111,15 @@ test('online: loads the published catalog, survives an outage, recovers', async 
   await page.locator(`[data-select="${id}"]`).check();
   for (const file of ['catalog.json', 'sync-status.json', 'update-history.json'])
     expect(remote.requests).toContain(PUBLISHED + file);
+
+  // Unchanged publication: the poll reads the status only, not the 2.8 MB catalog.
+  const catalogFetches = () => remote.requests.filter((u) => u.endsWith('catalog.json')).length;
+  const before = catalogFetches();
+  await page.clock.runFor(FIVE_MINUTES);
+  await expect
+    .poll(() => remote.requests.filter((u) => u.endsWith('sync-status.json')).length)
+    .toBeGreaterThan(1);
+  expect(catalogFetches()).toBe(before);
 
   // Outage: the newer data, search and selection stay; the notice says so.
   remote.available = false;
@@ -131,6 +143,7 @@ test('online: loads the published catalog, survives an outage, recovers', async 
   newer.products[0].name = 'Second refresh fixture';
   newer.meta.last_successful_sync = '2026-10-30T13:01:00Z';
   remote.catalog = newer;
+  remote.status = { ...status, last_publication_at: '2026-10-30T13:01:00Z' };
   await page.locator('#tab-products').click();
   await page.clock.runFor(FIVE_MINUTES);
   await expect(page.locator('#toast')).toHaveText('The published catalog has been updated.');

@@ -34,6 +34,48 @@ export async function fetchPublished(
   return { catalog, status, history };
 }
 
+/** Fetch the small status and history files only (the regular poll). */
+export async function fetchStatus(
+  base: string,
+  fetchFn: typeof fetch = fetch,
+): Promise<Pick<PollResult, 'status' | 'history'>> {
+  const [status, history] = await Promise.all([
+    fetchJson(base + 'sync-status.json', fetchFn)
+      .then(parseSyncStatus)
+      .catch(() => null),
+    fetchJson(base + 'update-history.json', fetchFn)
+      .then(parseUpdateHistory)
+      .catch(() => null),
+  ]);
+  return { status, history };
+}
+
+/** Fetch and validate the catalog alone, or null. */
+export async function fetchCatalogOrNull(
+  base: string,
+  fetchFn: typeof fetch = fetch,
+): Promise<Catalog | null> {
+  try {
+    return parseCatalog(await fetchJson(base + 'catalog.json', fetchFn));
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Whether `next` describes a different publication than the one the displayed catalog
+ * came from (`known`; null when unknown). The pipeline rewrites sync-status.json
+ * whenever it publishes a catalog, so an unchanged status means an unchanged catalog.
+ */
+export function publicationChanged(known: SyncStatus | null, next: SyncStatus): boolean {
+  return (
+    !known ||
+    next.last_publication_at !== known.last_publication_at ||
+    next.workbook_sha256 !== known.workbook_sha256 ||
+    next.checked_at !== known.checked_at
+  );
+}
+
 /** A different catalog version: new sync time or new workbook hash. */
 export function catalogChanged(current: Catalog | null, next: Catalog): boolean {
   return (

@@ -24,7 +24,14 @@ import {
   resetFilters,
   type Filters,
 } from './filters';
-import { carryOver, catalogChanged, fetchPublished } from './sync';
+import {
+  carryOver,
+  catalogChanged,
+  fetchCatalogOrNull,
+  fetchPublished,
+  fetchStatus,
+  publicationChanged,
+} from './sync';
 import type { Catalog, SyncStatus, UpdateHistory } from './types';
 
 /** The five tabs of the Oct 19 reference. */
@@ -69,6 +76,8 @@ export class AppState {
   #pageState = $state({ key: '', page: 1 });
   #toastTimer: ReturnType<typeof setTimeout> | undefined;
   #polling = false;
+  /** The sync status of the publication the displayed catalog came from. */
+  #catalogStatus: SyncStatus | null = null;
   readonly announcer: Announcer;
 
   options = $derived(categoryOptions(this.catalog));
@@ -104,6 +113,7 @@ export class AppState {
     if (embedded) {
       this.flags.usingEmbeddedSnapshot = true;
       this.status = embedded.status;
+      this.#catalogStatus = embedded.status;
       this.history = embedded.history;
       this.#setup(embedded.catalog);
       await this.poll();
@@ -111,6 +121,7 @@ export class AppState {
       const r = await fetchPublished(this.dataBase);
       if (r.catalog) {
         this.flags.catalogPollFailed = false;
+        this.#catalogStatus = r.status;
         this.#setup(r.catalog);
       } else {
         this.flags.catalogPollFailed = true;
@@ -137,27 +148,60 @@ export class AppState {
     if (history) this.history = history;
   }
 
-  /** Check the published catalog; keep filters and selection if it changed. */
+  /**
+   * The five-minute check. Fetches the small sync-status.json (and history) and only
+   * re-downloads catalog.json when the status shows a new publication, or when no
+   * catalog is displayed yet. A newer catalog keeps the user's filters and selection.
+   */
   async poll(): Promise<void> {
     if (this.#polling) return;
     this.#polling = true;
     try {
-      const r = await fetchPublished(this.dataBase);
-      if (r.catalog) {
+      if (!this.catalog.products.length) {
+        const r = await fetchPublished(this.dataBase);
+        if (r.catalog) {
+          this.flags.catalogPollFailed = false;
+          this.#catalogStatus = r.status;
+          this.#setup(r.catalog);
+        } else this.flags.catalogPollFailed = true;
+        this.#applyStatus(r.status, r.history);
+        return;
+      }
+      const { status, history } = await fetchStatus(this.dataBase);
+      if (history) this.history = history;
+      if (!status) {
+        // Offline or unpublished: nothing could be checked.
+        this.flags.statusPollFailed = true;
+        if (this.flags.usingEmbeddedSnapshot) this.flags.catalogPollFailed = true;
+        return;
+      }
+      this.flags.statusPollFailed = false;
+      if (!publicationChanged(this.#catalogStatus, status)) {
+        // The displayed catalog is the published one.
+        this.status = status;
         this.flags.catalogPollFailed = false;
         this.flags.usingEmbeddedSnapshot = false;
-        if (!this.catalog.products.length) this.#setup(r.catalog);
-        else if (catalogChanged(this.catalog, r.catalog)) {
-          const kept = carryOver(this.catalog, r.catalog, this.filters, this.selected);
-          this.catalog = r.catalog;
-          this.filters = kept.filters;
-          this.selected = kept.selected;
-          saveSelection(this.selected);
-          if (this.dialog) this.closeDialog();
-          this.showToast('The published catalog has been updated.');
-        }
-      } else this.flags.catalogPollFailed = true;
-      this.#applyStatus(r.status, r.history);
+        return;
+      }
+      const next = await fetchCatalogOrNull(this.dataBase);
+      if (!next) {
+        // Keep the displayed catalog and its status; retry on the next poll.
+        this.flags.catalogPollFailed = true;
+        return;
+      }
+      this.flags.catalogPollFailed = false;
+      this.flags.usingEmbeddedSnapshot = false;
+      this.#catalogStatus = status;
+      this.status = status;
+      if (catalogChanged(this.catalog, next)) {
+        const kept = carryOver(this.catalog, next, this.filters, this.selected);
+        this.catalog = next;
+        this.filters = kept.filters;
+        this.selected = kept.selected;
+        saveSelection(this.selected);
+        if (this.dialog) this.closeDialog();
+        this.showToast('The published catalog has been updated.');
+      }
     } finally {
       this.#polling = false;
     }

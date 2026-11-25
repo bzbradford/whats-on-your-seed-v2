@@ -1,6 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 import { resetFilters } from '../../src/lib/filters';
-import { carryOver, catalogChanged, fetchPublished } from '../../src/lib/sync';
+import {
+  carryOver,
+  catalogChanged,
+  fetchPublished,
+  fetchStatus,
+  publicationChanged,
+} from '../../src/lib/sync';
 import { fixtureCatalog, publishedHistory, publishedStatus } from './fixtures';
 
 function fakeFetch(files: Record<string, unknown>) {
@@ -89,5 +95,40 @@ describe('catalog refresh', () => {
     expect(carryOver(current, fixtureCatalog(), filters, [], '2026-10-20').filters.end).toBe(
       '2026-10-01',
     );
+  });
+});
+
+describe('status-first polling', () => {
+  const known = publishedStatus();
+
+  it('detects a new publication from the status alone', () => {
+    expect(publicationChanged(known, { ...known })).toBe(false);
+    expect(publicationChanged(null, known)).toBe(true);
+    expect(
+      publicationChanged(known, { ...known, last_publication_at: '2030-01-01T00:00:00Z' }),
+    ).toBe(true);
+    expect(publicationChanged(known, { ...known, workbook_sha256: 'other' })).toBe(true);
+    expect(publicationChanged(known, { ...known, checked_at: '2030-01-01T00:00:00Z' })).toBe(true);
+  });
+
+  it('fetches only the status and history files', async () => {
+    const fetchFn = fakeFetch({
+      'sync-status.json': known,
+      'update-history.json': publishedHistory(),
+    });
+    const r = await fetchStatus('x/', fetchFn);
+    expect(r.status?.state).toBe('success');
+    expect(vi.mocked(fetchFn).mock.calls.map((c) => String(c[0]))).toEqual([
+      'x/sync-status.json',
+      'x/update-history.json',
+    ]);
+    expect(await fetchStatus('x/', fakeFetch({}))).toEqual({ status: null, history: null });
+    // An invalid file is a failed check, not an exception.
+    expect(
+      await fetchStatus(
+        'x/',
+        fakeFetch({ 'sync-status.json': { state: 'success' }, 'update-history.json': {} }),
+      ),
+    ).toEqual({ status: null, history: null });
   });
 });
