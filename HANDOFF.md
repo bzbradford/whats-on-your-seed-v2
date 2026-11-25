@@ -7,19 +7,22 @@ _Last updated: 2026-11-25_
 - Repo: `bzbradford/whats-on-your-seed-v2`, a fork of `danieham-97/crop-protection-network` (remote `upstream`, reference only; we won't merge back). Default branch is `main`.
 - Live: https://bzbradford.github.io/whats-on-your-seed-v2/ (also `?embed` and `/whats-on-your-seed-standalone.html`). `main` still shows the bare Phase 1 product list.
 - **Phase 1 (scaffold) and Phase 2 (pipeline) done.** See PLAN.md.
-- **Phase 3 (UI port with exact visual parity) done on branch `phase-3-ui`, not merged.** The whole legacy UI is ported: products (search, filters, mobile drawer, sort, pager, applied filters, exports, print), product and ingredient dialogs, compare bar and comparison matrix (CSV, print), guides & sources (abbreviations, ingredient guide, treatment/warning/handling guides, references, fact sheet, sources & coverage, disclaimer), data currency with update history, standalone polling with offline fallback. PLAN.md lists the intentional deviations and the legacy oddities that were replicated on purpose.
-- Tests: 142 Vitest unit tests (legacy `logic_test`/`live_catalog_test` cases on the frozen fixture and current data), 47 Playwright tests (legacy `ui_test` behaviours, standalone file://, and 22 legacy-vs-new screenshot comparisons at desktop and mobile, all at 0 differing pixels).
+- **Phase 3 (UI port with exact visual parity): done on branch `phase-3b-ui`, not merged.** The target changed: the user's chosen look is the **Oct 19 version** of the legacy app (upstream `435c0bf`, now in `legacy/static/`, see `legacy/REFERENCE.md`), not the streamlined master UI that `phase-3-ui` ported. `phase-3b-ui` re-ports onto Oct 19 (five tabs, cream hero, sidebar filters, cards, icons, Roboto Condensed), without the hero art or any state registration UI, and with the later About/citation/disclaimer/data-currency/online-refresh features brought forward. PLAN.md Phase 3 lists every deviation, where the brought-forward content sits, and the Oct 19 oddities kept on purpose.
+- Tests: 143 Vitest unit tests; 50 Playwright tests, including 23 Oct 19-vs-new screenshot comparisons (desktop and mobile), all at 0 differing pixels.
+- `phase-3-ui` (master-era target) is superseded by `phase-3b-ui`; keep it only for reference.
 
 ## Next
 
-1. Review `phase-3-ui` against the legacy app (`python3 legacy/serve.py`) and merge it (the user opens the PR; agents don't merge).
-2. Phase 4: compact `?embed` layout tested in a cross-origin iframe; accessibility pass; then design iteration, which will mean updating or retiring the parity test (it pins the legacy look by design).
-3. Decide on the "worth revisiting" legacy behaviours listed under Phase 3 in PLAN.md (e.g. poll `sync-status.json` before refetching the 2.8 MB catalog; the safety panel's unguarded label link).
+1. **Decide the data-job change** (PLAN.md Phase 3, "Pending"): keep the parity spec out of `data-update.yml` with a `test:e2e:data` script (`--grep-invert parity`). An agent edit was blocked by the permission classifier, so it needs you.
+2. Review `phase-3b-ui` against the reference (`python3 legacy/serve.py --port 8081 --no-browser`) and merge it (agents don't open PRs or merge).
+3. Decide the open items in PLAN.md: hero spacing without the art, master-era abbreviations guide and print buttons (not brought forward), the Oct 19 oddities list (e.g. Treatment guide overflows sideways at 390 px).
+4. Phase 4: compact `?embed` layout tested in a cross-origin iframe; accessibility pass; then design iteration (retire or update the parity test).
+5. Later, separate project: state registration (data source first; see PLAN.md "Future: state registration").
 
 ## Things to know
 
-- **Weekly data job** (`data-update.yml`, Mondays 06:30 Central): most weeks it finishes in seconds and commits nothing. When it commits, it's as github-actions[bot] with a summary like "Update catalog from EPA: … (2 added, 1 changed, 0 removed)", then it redeploys Pages. Run `git pull` before working. Its validation runs `pnpm test:e2e`, which now includes the parity tests against `legacy/` (both apps get the same new data, so they should keep matching).
+- **Weekly data job** (`data-update.yml`, Mondays 06:30 Central): most weeks it finishes in seconds and commits nothing. When it commits, it's as github-actions[bot] with a summary like "Update catalog from EPA: … (2 added, 1 changed, 0 removed)", then it redeploys Pages. Run `git pull` before working. Its validation runs `pnpm test:e2e`, which currently includes the parity tests against `legacy/` (both apps get the same new data, so they should keep matching; see the pending data-job decision above).
 - `pnpm test:e2e` builds both targets and starts two servers: `vite preview` (4173) and `python3 legacy/serve.py` (8081). Parity images, diffs and pixel counts land in `test-results/<test>/` (`*-legacy.png`, `*-current.png`, `*-diff.png`, `*-diff.txt`).
-- Styling is the verbatim legacy CSS (`src/styles/legacy.css`); keep DOM/class names as they are until parity is signed off. See CLAUDE.md "Conventions" and "Gotchas" (Svelte whitespace/text-node pitfalls).
+- Styling is the verbatim Oct 19 CSS (`src/styles/legacy.css`); keep DOM/class names as they are until parity is signed off. See CLAUDE.md "Conventions" and "Gotchas" (Svelte whitespace/text-node pitfalls).
 - Catalog split was deferred: Pages serves the 2.8 MB catalog gzipped at ~287 KB. Reasoning in PLAN.md Phase 2.
 - Label PDFs are **not** in the repo. Products link to EPA PPLS PDFs. The only committed PDF is the CPN fact sheet (`public/assets/`, generated by `pipeline/build_fact_sheet.py`, needs `uv sync --extra factsheet`).

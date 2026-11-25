@@ -38,36 +38,52 @@ Goal: rebuild the legacy monolithic `legacy/static/index.html` (~125 KB, one inl
 - [x] First manual `data-update` run succeeded on GitHub (run 45663835699): bot commit → dispatched deploy → live `sync-status.json` updated
 - **Catalog split: deferred.** The 2.8 MB file is ~287 KB gzipped as served by Pages. Moving `target_pests_raw` (used only by the comparison matrix) to a lazy file would cut that to ~126 KB, but adds lazy-loading to compare, CSV export and the standalone build. Revisit after parity if load time matters.
 
-### 3. Port the UI with exact visual parity — done (branch `phase-3-ui`, awaiting review)
+### 3. Port the UI with exact visual parity — done (branch `phase-3b-ui`, awaiting review)
 
 The legacy look and behaviour are the target: replicate first, iterate after.
 
-- [x] Lift the legacy `<style>` verbatim into `src/styles/legacy.css` (global) and keep its class names and DOM structure in the Svelte components. Tailwind stays available (theme + utilities, **no preflight**) but nothing is restyled until parity is reached.
-- [x] Assets: CPN logo and treated-corn photo in `src/assets` (inlined into the standalone file); fact sheet PDF stays in `public/assets` (pipeline output) and is inlined as a `data:` URL only in the standalone build. Roboto Condensed is not used: legacy's final CSS sets headings to Arial (`legacy/BRANDING.md`).
-- [x] Visual parity tests (`tests/e2e/parity.spec.ts`): Playwright serves `legacy/static/` (port 8081) and the new app, routes both to `public/data/*.json` with a frozen clock, and pixel-compares (pixelmatch, legacy = expected, budget 25 px). Desktop 1280×900 and mobile 390×844: products initial, search, filters + drawer, no results, catalog unavailable, product dialog, ingredient dialog, compare bar, matrix (2 products), empty matrix, ingredient guide, guides (all sections + disclaimer), sources panels. **All at 0 differing pixels.** Masked: the catalog summary line (deviation below); in the sources grid the two deviated panels are hidden in both apps and the "Latest official retrieval" → "Catalog last changed" row is masked.
-- [x] Port the legacy `.cjs` logic/UI test cases (`legacy/tests/`) to Vitest/Playwright: `logic_test` + `live_catalog_test` → `tests/unit/*` (fixture `catalog-2026-10-19.json.gz` and current data); `ui_test` → `tests/e2e/app.spec.ts` and `standalone.spec.ts`
-- [x] Full TypeScript types for the catalog schema, sync-status and update-history, checked against `public/data` and the pipeline fixture (`tests/unit/types.test.ts`)
-- [x] Standalone build polls `https://bzbradford.github.io/whats-on-your-seed-v2/data/` every 5 min (catalog, sync-status, update-history; all three also embedded), offline fallback, keeps filters/selection on refresh. The Pages build polls its own `data/` relatively, as legacy's hosted page did.
+**Reference changed (3b).** The first port (`phase-3-ui`) targeted upstream's streamlined master UI. The user's chosen look is the earlier **Oct 19 version** (upstream `435c0bf`): cream hero, five tabs, sidebar filters, card layout, inline SVG icons, Roboto Condensed headings. `legacy/static/` now holds that version (`legacy/REFERENCE.md`); the master-era page is `git show 9b45623:legacy/static/index.html`. Branch `phase-3b-ui` re-ports onto it, reusing the `src/lib/` logic and tests.
+
+- [x] Oct 19 `<style>` lifted verbatim into `src/styles/legacy.css`; its `@font-face` line moved to `src/styles/fonts.css` so Vite can resolve the font. DOM, ids and classes follow Oct 19. Tailwind without preflight.
+- [x] Assets: CPN logo and Roboto Condensed (`src/assets`, OFL licence alongside; bundled on Pages, inlined in the standalone file); fact sheet from `public/assets` (inlined in the standalone). The hero art `seed-botanical.webp` is **not** shipped (user decision); the treated-corn photo is no longer used.
+- [x] Visual parity vs the Oct 19 reference (`tests/e2e/parity.spec.ts`): both apps get `public/data/*.json` and a frozen clock; pixelmatch, budget 25 px. Desktop 1280×900 and mobile 390×844: products initial, search, filters (drawer open on mobile, record filters open), product dialog, compare bar, matrix with 2 products, ingredient guide, treatment guide, Sources & updates; desktop only: catalog unavailable, no results, ingredient dialog, empty matrix, ingredient search. **All 23 at 0 differing pixels.** What's hidden or masked is listed in the spec header and below.
+- [x] Behaviour tests (`tests/e2e/app.spec.ts`) follow the Oct 19 `ui_test.cjs` (hero shortcuts focus the searches, five tabs, guide links, mobile drawer) plus the later checks; `standalone.spec.ts` covers the file:// build; unit tests (`tests/unit/`) carry the legacy logic tests.
+- [x] Full TypeScript types for catalog, sync-status and update-history, checked against `public/data` and the pipeline fixture.
+- [x] Standalone polls `https://bzbradford.github.io/whats-on-your-seed-v2/data/` every 5 min with offline fallback (master-era behaviour, brought forward; Oct 19's standalone was a fixed snapshot). The Pages build polls its own `data/`.
+
+**User decisions on top of the Oct 19 reference** (hidden in the reference or masked in parity):
+
+1. No hero art (`img.hero-art`). The CSS is verbatim, so the hero grid keeps its (now empty) second column on desktop and the mobile `h1` keeps `max-width:66%`; nothing was restyled to "close up" the space. Hidden in the reference for parity.
+2. No state registration UI: the state filter (`#state`, `#state-status`, `#state-help`), the matrix's state selector and its four state rows, the dialog's state panel, and the "State registration & availability coverage" panel are left out (hidden/removed in the reference for parity). Consequences: the matrix's last row group is titled "Sources & provenance" (master-era name) instead of "State evidence & provenance" (masked); the no-results note no longer points at the state filter (master-era sentence; hidden in parity); CSV exports have no state columns. The filter group keeps Oct 19's "Crop & location" legend. See "Future: state registration" below.
+3. Brought forward from the master-era UI, placed in the Oct 19 layout:
+   - **Sources & updates tab:** a new first panel "About this tool and how to use it" (what it is, how it works, how to use it; the steps are reworded for the Oct 19 tabs and controls); "Data currency & update history" replaces "Automatic source checks" and carries the "Dates and updates" text; "How to cite this version" is the last panel (cites this fork). All hidden in parity.
+   - **Footer:** the master-era wording ("Educational reference only…") and the draft disclaimer (`#tool-disclaimer`) replace the Oct 19 footer text (newer wording wins; hidden in parity).
+   - **Data currency:** the hero line `#hero-mode` reads "EPA data as of …" (Oct 19: "EPA workbook created …"; masked); the notice keeps Oct 19's "EPA workbook loaded" form but says "Catalog last changed …" instead of "Last official workbook retrieval …", and uses master-era warnings (offline snapshot, published updates unavailable, EPA update failed) instead of Oct 19's "Update failed" (hidden in parity). No last-check time, no 48-hour warning.
+   - **Schedule wording:** weekly, Mondays 6:30 a.m. (Oct 19 said daily 6:37) in the currency and "Automatic EPA updates" panels; the latter uses the master-era text about online refresh (hidden in parity). "Source dates & connections": "Latest official retrieval" → "Catalog last changed", "Automatic updates" uses master-era wording (both masked).
+   - **Label-link identity guards:** same `labelAccess()` in both versions; label-links CSV keeps the master-era "Data-use notice" column.
+   - **Standalone online refresh** with offline fallback, validated catalogs (Oct 19's hosted poll didn't validate).
+   - Catalog-unavailable messages use the master-era wording ("…will retry automatically"; "Connect and validate the EPA source…"); masked/hidden in parity.
+4. Roboto Condensed is used (Oct 19 really loads it) and bundled.
+
+**Other deviations:** fetches revalidate (`no-cache`) instead of `no-store`; the standalone also embeds `sync-status.json` and `update-history.json`; legacy `catalog.mode === 'preview'` branches not ported. Not brought forward (not in the list; decide later): the master-era abbreviations guide, the "Print this view" / "Print guides & sources" buttons (browser print still works; matrix and dialog print are kept), and the treated-corn photo.
+
+**Oct 19 behaviour replicated but worth revisiting:**
+
+- At 390 px the Treatment guide page scrolls sideways (the page is 727 px wide in both apps): a guide table escapes its scroll wrapper.
+- The hero lists "EPA · Greenbook · CDMS", but Greenbook and CDMS are saved references only (no feeds).
+- Escape closes the filter panel only at mobile widths (by design in Oct 19, where it's a drawer).
+- The product dialog's safety panel links `safety.label_url` as "Exact registration match" without `labelAccess()`'s identity guards (no distributor has one today).
+- Export toasts say "1 products exported…"; the restricted-use chip shows the raw value ("Restricted-use flag: unknown"); search and dates aren't in the applied-filter chips.
+- Before the catalog loads, the pager and export buttons are visible and enabled.
+- "Needs review / missing fields" matches every non-`verified` record, including base-linked distributor records.
+- The hosted page re-downloads the catalog every five minutes (now revalidated); polling `sync-status.json` first would avoid most of it.
+- The CPN logo link opens in the same tab (hidden in `?embed`).
+
+**Pending (needs the user):** keep the screenshot comparison out of the weekly data job. Proposed: add `"test:e2e:data": "pnpm build && pnpm build:standalone && playwright test --grep-invert parity"` to `package.json` and call it instead of `pnpm test:e2e` in `.github/workflows/data-update.yml` (normal CI keeps running parity). An agent's attempt to edit the workflow was blocked by the permission classifier as weakening a check, so it's left for the user to apply or approve. Until then, a rendering change triggered by new EPA data could block publishing.
+
+**Future: state registration** (separate project; data first, then UI). The user wants a "pick your state, show products registered there" selector. Findings: there is no national bulk source of state pesticide registrations. NPIRS (Purdue) has state registration data, but it's search-based, with paid subscriptions that universities can get. Kelly Registration Systems covers about 39 states, search only. Some states offer bulk downloads, e.g. New York (NYSPAD) and California DPR. A data-sourcing decision must come before any UI. The Oct 19 state UI was not ported: its data was 3 products of CDMS search snippets with zero state-agency records, and the pipeline no longer produces it. The filter model (`src/lib/filters.ts` `Filters` / `matchesFilters`, `appliedFilters`) and the matrix rows (`src/lib/matrix.ts`) are where a state filter and state rows would plug in.
 
 Port order: catalog load → shell/header/tabs → product list/search/filters/pager → product detail dialog → comparison matrix → ingredient guide → guides & sources → exports/print → sync/update status. Feature checklist below.
-
-**Intentional deviations from legacy** (all user-visible ones are masked or excluded in the parity test):
-
-- Data currency (agreed): no "last EPA check"/"Latest official retrieval" date and no "EPA check not verified" / 48-hour overdue warnings. Shown instead: "EPA data as of" (`meta.source_snapshot_date`), "Catalog last changed" (`sync-status.json` `last_publication_at`) in the catalog summary, About text and source panels, plus an update-history table in a new "Data currency & update history" panel (replaces "Automatic source checks").
-- Schedule wording: legacy said "daily at 6:37 a.m."; now "weekly, on Mondays at 6:30 a.m." (About, the currency panel and "Automatic EPA updates").
-- URLs that pointed at `danieham-97/crop-protection-network`: the standalone poll URL, the "View source update runs" link (now `sync-status.json` `scheduler.workflow_url`), and the suggested citation's repository URL now point at this fork.
-- Fetches use `cache: 'no-cache'` (revalidate; a 304 when unchanged) instead of `no-store`. Same data, much less transfer on the five-minute poll.
-- The standalone file also embeds `sync-status.json` and `update-history.json`, so an offline copy shows its update history.
-- Legacy's `catalog.mode === 'preview'` branches ("example products", no date filter) were not ported; the pipeline never emits that mode.
-
-**Legacy behaviour replicated but worth revisiting** (post-parity):
-
-- Hosted page re-downloads the 2.8 MB catalog every five minutes (now revalidated). Polling `sync-status.json` first and fetching the catalog only when `last_publication_at` changes would avoid most of that.
-- The product dialog's safety panel links `safety.label_url` as "Exact registration match" without `labelAccess()`'s identity guards (which the label buttons use). No distributor record currently has a `label_url`, so no wrong link is shown today.
-- Export toasts say "1 products exported…"; the applied-filter chip shows the raw value ("Restricted-use flag: unknown"); search/date filters aren't listed among applied filters.
-- Before the catalog loads, the pager and export buttons are visible and enabled (clicking export then produces a header-only CSV).
-- "Needs review / missing fields" matches every non-`verified` record, including base-linked distributor records.
-- The CPN logo link in the header has no `target="_blank"` (the header is hidden in `?embed`).
 
 ### 4. Embed and polish
 
@@ -111,17 +127,17 @@ Taken from the legacy `static/index.html`. Tick items when ported **and** tested
 
 - [x] Ingredient search, grid, per-ingredient details and product counts
 
-**Guides & sources tab**
+**Treatment guide and Sources & updates tabs**
 
-- [x] Treatment types, FRAC/IRAC, signal words and warnings, BMPs/handling, abbreviations
-- [x] Sources, coverage and update details, 14-site counts, citation, draft disclaimer
+- [x] Treatment types, FRAC/IRAC, signal words and warnings, BMPs/handling (the master-era abbreviations guide is not in the Oct 19 UI and was not brought forward)
+- [x] Sources, coverage and update details, 14-site counts, About and citation (Sources & updates), draft disclaimer (footer)
 - [x] Fact sheet PDF download
 
 **Exports & print**
 
 - [x] Results CSV (all filtered rows across pages, provenance, CSV-injection-safe cells)
 - [x] Label links CSV
-- [x] Print current view / results / guides
+- [x] Print: comparison matrix and product dialog (Oct 19). The master-era "Print this view" buttons were not brought forward
 
 ## Open decisions
 

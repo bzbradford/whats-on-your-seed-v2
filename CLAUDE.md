@@ -14,7 +14,7 @@
 - repo root: the Svelte app (`src/`, `tests/`, `public/`)
 - `public/data/` — **pipeline output, committed**: `catalog.json`, `sync-status.json`, `update-history.json`, `epa-import-audit.json`. The weekly job commits here, only when the catalog changes.
 - `pipeline/` — Python (uv). `reference/` holds the hand-curated inputs (scope, ingredient FRAC/IRAC reference, education text, label specs, source references).
-- `legacy/` — the original app, **frozen** as the visual/behaviour reference for the port. Its `static/` has its own catalog snapshot and still runs (`python3 legacy/serve.py`). Don't edit it; delete it at cutover.
+- `legacy/` — the original app, **frozen** as the visual/behaviour reference for the port. `static/` is the **Oct 19 UI** (upstream `435c0bf`, see `legacy/REFERENCE.md`), the look the user chose; the later streamlined master UI is `git show 9b45623:legacy/static/index.html`. The other files in `legacy/` (docs, `.cjs` tests) are from the later version. Don't edit it; delete it at cutover.
 
 **Port goal:** replicate the legacy UI and theme exactly first (lift its CSS, keep its DOM/class structure), and only iterate on the design after parity. See PLAN.md Phase 3.
 
@@ -35,7 +35,7 @@
 - No CDN resources; the bundle and single-file build must be self-contained (fonts/logos included).
 - The app must work in a cross-origin iframe: `localStorage` is optional (wrap in try/catch), outbound links use `target="_blank"`.
 - Never hand-edit generated data JSON; change the pipeline or its reference inputs.
-- **Styling during the parity phase (overrides the predecessor's scoped `@apply` convention):** the legacy `<style>` block is lifted verbatim into `src/styles/legacy.css` (global, prettier-ignored) and components reuse the legacy DOM, ids and class names. Don't restyle, add scoped styles, or rename classes until parity is signed off; Tailwind is loaded without preflight (`src/app.css`) so it can't alter the legacy rendering. Any visual change must keep `tests/e2e/parity.spec.ts` at 0 differing pixels, or be an intentional, masked deviation listed in PLAN.md.
+- **Styling during the parity phase (overrides the predecessor's scoped `@apply` convention):** the Oct 19 `<style>` block is lifted verbatim into `src/styles/legacy.css` (global, prettier-ignored; only its `@font-face` line lives in `src/styles/fonts.css`) and components reuse the legacy DOM, ids and class names. Don't restyle, add scoped styles, or rename classes until parity is signed off; Tailwind is loaded without preflight (`src/app.css`) so it can't alter the legacy rendering. Any visual change must keep `tests/e2e/parity.spec.ts` at 0 differing pixels, or be an intentional, masked deviation listed in PLAN.md.
 - Business rules (search, filters, labels, safety, matrix, CSV, currency, sync) live in framework-free `src/lib/*.ts` with Vitest tests. `src/lib/app-state.svelte.ts` is the only runes module: thin glue that calls them. Components read `getApp()` (context) and render.
 - Content correctness matters (pesticide registration data): preserve the legacy app's disclaimers, provenance and "missing/unreviewed" flags when porting.
 
@@ -65,16 +65,16 @@ uv run python scheduled_update.py --output /tmp/out/catalog.json  # dry run (cop
 
 ## Key files
 
-- `src/App.svelte` — page shell (header, intro, about, notice, tabs, footer); mounts into `<body>` (legacy print CSS selects `body > header`/`body > main`)
-- `src/components/` — `ProductsTab`, `ProductCard`, `MatrixTab` (+ `MatrixCellView`), `ResourcesTab` (+ `GuideContent`, `DataGrid`, static `Abbreviations`), `DetailDialog` (+ `ProductDetail`, `IngredientDetail`), `CompareBar`, `Disclaimer`, small `ExtLink`/`LabelAction`/`SafetyBadges`/`SourceLinks`
-- `src/styles/legacy.css` — legacy CSS, verbatim; `src/styles/embed.css` — minimal `?embed` rules
+- `src/App.svelte` — page shell (icon sprite, header, hero with `#hero-mode`, start strip, five tabs, notice, footer); mounts into `<body>` (legacy print CSS selects `body > header`/`body > main`)
+- `src/components/` — one per tab: `ProductsTab` (+ `ProductCard`), `MatrixTab` (+ `MatrixCellView`), `IngredientsTab`, `GuideTab` (+ `GuideContent`), `DataTab` (+ `DataGrid`, which also holds the brought-forward About, data-currency and citation panels); `DetailDialog` (+ `ProductDetail`, `IngredientDetail`), `CompareBar`, `Disclaimer` (master-era footer); small `Icon`/`IconSprite` (legacy `#icon-*` set), `PurposeBadge`, `ExtLink`, `LabelAction`, `SafetyBadges`, `SourceLinks`
+- `src/styles/legacy.css` — Oct 19 CSS, verbatim; `fonts.css` — Roboto Condensed `@font-face`; `embed.css` — minimal `?embed` rules
 - `src/lib/app-state.svelte.ts` — `AppState`: catalog/status/history, filters, page, selection, view, dialog, toast, live regions; `start()` / `poll()` (five-minute refresh, both builds)
 - `src/lib/filters.ts` (search/filters/sort/pager/applied chips), `product-facts.ts` (reference lookup, FRAC/IRAC, signal word, RUP, quality), `labels.ts` (EPA label PDF identity guards), `compare.ts` (selection cap/order, localStorage, matrix picker), `matrix.ts` (label-extract guards, matrix rows), `csv.ts` (exports, injection-safe cells), `ingredients.ts`, `currency.ts` (data dates, warnings, citation, history), `sync.ts` (fetch published files, carry filters over), `announcer.ts`, `print.ts`, `format.ts`
 - `src/lib/catalog.ts` — catalog/status/history validation (legacy's published-catalog checks), fetch with timeout, and `loadEmbedded()` (standalone only: catalog, sync-status and update-history inlined via `?raw`, dead-code-eliminated from the Pages bundle)
 - `src/lib/types.ts` — full catalog, sync-status and update-history types; `tests/unit/types.test.ts` checks them against `public/data` and the pipeline fixture
 - `src/lib/assets.ts` — fact sheet URL: `public/assets/` on Pages, an inlined `data:` URL in the standalone file
 - `tests/unit/` — Vitest; legacy `logic_test.cjs` cases run against the frozen `pipeline/tests/fixtures/catalog-2026-10-19.json.gz`
-- `tests/e2e/app.spec.ts` (legacy `ui_test.cjs` behaviours), `standalone.spec.ts` (file://, offline/online/outage), `parity.spec.ts` + `parity-helpers.ts` (legacy vs new screenshots, pixelmatch)
+- `tests/e2e/app.spec.ts` (legacy `ui_test.cjs` behaviours, Oct 19 and later), `standalone.spec.ts` (file://, offline/online/outage), `parity.spec.ts` + `parity-helpers.ts` (Oct 19 reference vs new screenshots, pixelmatch; its header lists every hidden/masked region)
 - `vite.config.js` — both build modes, `$data` alias, Vitest config
 - `.github/workflows/deploy.yaml` — CI (web: lint, check, unit, builds, e2e; pipeline: ruff, pytest) and Pages deploy from `main`
 - `.github/workflows/data-update.yml` — weekly, Mondays 06:30 America/Chicago (manual run has a `force` option): HEAD-check EPA → download only if changed → if `public/data/` changed, validate everything → commit → dispatch `deploy.yaml`. Unchanged weeks commit nothing; failures fail the job (GitHub emails) and write nothing.
@@ -94,4 +94,6 @@ uv run python scheduled_update.py --output /tmp/out/catalog.json  # dry run (cop
 - Parity screenshots use an absolute pixel budget (25), not a ratio: on a 25,000-px-tall page a ratio hides a whole changed line. Everything currently compares at 0.
 - `catalog.json` is loaded with `$state.raw` (never deep-proxied). Filter haystacks are cached per product object in a WeakMap.
 - The legacy reference server (`legacy/serve.py`) is Playwright's second `webServer` on port 8081; e2e needs `python3` on the PATH.
-- `legacy/static/index.html` sets `--font-heading` to Arial in its final cascade, so Roboto Condensed is never loaded (see `legacy/BRANDING.md`). `src/assets/roboto-condensed.ttf` is unused, kept with its licence only for reference.
+- The Oct 19 reference really uses Roboto Condensed for headings (`--font-heading`), so `src/assets/roboto-condensed.ttf` is bundled (inlined in the standalone file; OFL licence in `src/assets/`). `legacy/BRANDING.md` says it's unused: that describes the later master UI, not `legacy/static/`.
+- Parity hides features the port deliberately leaves out (hero art, state registration UI) in the reference only, and hides deviations whose size differs in both apps; see the header of `tests/e2e/parity.spec.ts`. `#hero-mode` gets a fixed width during parity so its mask boxes match.
+- **Pending decision:** `data-update.yml` runs `pnpm test:e2e`, which includes the parity spec, so a rendering change caused by new EPA data could block publishing. Proposed fix (needs the user; an agent edit to the workflow was blocked): a `test:e2e:data` script with `--grep-invert parity`, used by the data job only. See PLAN.md Phase 3.
