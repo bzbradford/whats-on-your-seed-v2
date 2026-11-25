@@ -175,6 +175,9 @@ test.describe('products', () => {
     await expect(page.locator('#dialog-note')).toHaveText(
       'EPA workbook created Sep 21, 2026. Follow the current product label.',
     );
+    await expect(page.locator('#dialog-body .safety-panel')).toContainText(
+      'Exact registration match',
+    );
     await page.keyboard.press('Tab');
     await expect(page.locator('#close-dialog')).toBeFocused();
     await page.keyboard.press('Escape');
@@ -200,6 +203,10 @@ test.describe('products', () => {
       'exclusion cannot be independently confirmed',
     );
     await expect(page.locator('#dialog-body')).toContainText('EPA signal: Not supplied');
+    // A distributor never gets the workbook-file link or its "exact match" claim.
+    await expect(page.locator('#dialog-body .safety-panel')).not.toContainText(
+      'Exact registration match',
+    );
     await page.keyboard.press('Escape');
   });
 });

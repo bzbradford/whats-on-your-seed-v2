@@ -74,3 +74,14 @@ export function labelActionText(p: Product, access: LabelAccess = labelAccess(p)
     ariaLabel: `${title} for ${p.name}, EPA ${p.registration_number} (opens in a new tab)`,
   };
 }
+
+/**
+ * The workbook's label file for the dialog's safety panel, only when it passes the same
+ * identity guards as the label buttons (exact Section 3 registration, EPA PPLS file,
+ * matching date). Legacy linked `safety.label_url` here unchecked while calling it an
+ * "Exact registration match".
+ */
+export function workbookLabelFile(p: Product): { url: string; date: string | null } | null {
+  const x = labelAccess(p);
+  return x.pdf ? { url: x.pdf, date: x.date } : null;
+}

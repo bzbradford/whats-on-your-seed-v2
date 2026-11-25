@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { labelAccess, labelActionText } from '../../src/lib/labels';
+import { labelAccess, labelActionText, workbookLabelFile } from '../../src/lib/labels';
 import { fixtureCatalog, publishedCatalog } from './fixtures';
 
 const catalog = fixtureCatalog();
@@ -63,5 +63,22 @@ describe('labelAccess (ported from legacy logic_test)', () => {
 
   it('names the product in the accessible label', () => {
     expect(labelActionText(labelProduct).ariaLabel).toContain(labelProduct.registration_number);
+  });
+});
+
+describe('workbookLabelFile (safety panel link)', () => {
+  it('links the workbook file only when it passes the identity guards', () => {
+    expect(workbookLabelFile(labelProduct)).toEqual({
+      url: labelProduct.safety.label_url,
+      date: labelAccess(labelProduct).date,
+    });
+    expect(workbookLabelFile({ ...distributor, safety: labelProduct.safety })).toBeNull();
+    expect(
+      workbookLabelFile({
+        ...labelProduct,
+        safety: { ...labelProduct.safety, label_date: '2000-01-01' },
+      }),
+    ).toBeNull();
+    expect(workbookLabelFile({ ...labelProduct, safety: {} })).toBeNull();
   });
 });

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { getApp } from '../lib/context';
   import { fmt } from '../lib/format';
-  import { EPA_LABEL_SEARCH, labelAccess } from '../lib/labels';
+  import { EPA_LABEL_SEARCH, labelAccess, workbookLabelFile } from '../lib/labels';
   import { coverageText, detailWarning, recordTypeText, ref, rupText } from '../lib/product-facts';
   import type { Product } from '../lib/types';
   import ExtLink from './ExtLink.svelte';
@@ -14,6 +14,7 @@
   const reference = $derived(app.catalog.ingredient_reference);
   const warning = $derived(detailWarning(p));
   const x = $derived(labelAccess(p));
+  const workbookLabel = $derived(workbookLabelFile(p));
   const docLabel = (type: string) =>
     type === 'sds'
       ? 'Safety data sheet'
@@ -68,11 +69,11 @@
     restrictions, storage, and disposal. An SDS signal word may differ from the EPA label signal
     word.
   </p>
-  {#if p.safety?.label_url}
+  {#if workbookLabel}
     <p>
       <ExtLink
-        url={p.safety.label_url}
-        text={'EPA label file listed in the workbook · ' + fmt(p.safety.label_date)}
+        url={workbookLabel.url}
+        text={'EPA label file listed in the workbook · ' + fmt(workbookLabel.date)}
       /><br /><span class="small muted">
         Exact registration match; file contents and current applicability have not been reviewed.
       </span>
