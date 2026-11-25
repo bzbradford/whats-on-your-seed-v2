@@ -132,6 +132,50 @@ class WorkbookTests(unittest.TestCase):
         raw['REG_TYPE'] = 'DP'
         self.assertIsNone(safety_fields(raw, '100-1-99', '2026-10-19')['label_url'])
 
+    def test_supplemental_only_files_are_listed_not_linked(self):
+        raw = record(
+            LABEL_NAMES='000100-00001-20200101.pdf, 000100-00001-20240101.pdf, 000100-00001-20250101.pdf, 000100-00001-20230101.pdf'
+        )
+        supplemental = {
+            '000100-00001-20250101.pdf': {'description': 'Supplemental label: new use'},
+            '000100-00001-20240101.pdf': {},
+            '000100-00001-20200101.pdf': {'description': 'Older supplemental'},
+        }
+        s = safety_fields(raw, '100-1', '2026-10-19', supplemental)
+        # Newest full label wins; only supplemental files newer than it are listed, newest first.
+        self.assertTrue(s['label_url'].endswith('/000100-00001-20230101.pdf'))
+        self.assertEqual(s['label_date'], '2023-01-01')
+        self.assertEqual(
+            [(x['date'], x['description']) for x in s['supplemental_labels']],
+            [
+                ('2025-01-01', 'Supplemental label: new use'),
+                ('2024-01-01', 'Supplemental labeling'),
+            ],
+        )
+        self.assertIn('supplemental-only labeling listed separately', s['label_basis'])
+        # With no reviewed supplemental files, behaviour is unchanged.
+        plain = safety_fields(raw, '100-1', '2026-10-19', {})
+        self.assertTrue(plain['label_url'].endswith('/000100-00001-20250101.pdf'))
+        self.assertNotIn('supplemental_labels', plain)
+        self.assertEqual(
+            plain['label_basis'], 'Latest exact-registration filename listed in the workbook'
+        )
+        # Only supplemental files: no label link, but they are still listed.
+        only = safety_fields(
+            record(LABEL_NAMES='000100-00001-20250101.pdf'), '100-1', '2026-10-19', supplemental
+        )
+        self.assertIsNone(only['label_url'])
+        self.assertEqual(len(only['supplemental_labels']), 1)
+
+    def test_reviewed_supplemental_list_is_well_formed(self):
+        from catalog import LABEL_FILES
+
+        self.assertEqual(LABEL_FILES['schema_version'], 1)
+        for name, entry in LABEL_FILES['supplemental_only'].items():
+            self.assertRegex(name, r'^\d{6}-\d{5}-\d{8}\.pdf$')
+            self.assertRegex(entry['reviewed_on'], r'^\d{4}-\d{2}-\d{2}$')
+            self.assertTrue(entry['description'])
+
     def parse(self, records, **kwargs):
         with tempfile.TemporaryDirectory() as d:
             p = pathlib.Path(d) / 'epa.xlsx'

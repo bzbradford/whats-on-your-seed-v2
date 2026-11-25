@@ -81,6 +81,8 @@ uv run python scheduled_update.py --output /tmp/out/catalog.json  # dry run (cop
 
 ## Gotchas
 
+- Changing pipeline logic or `pipeline/reference/*.json` doesn't change `public/data/` until the data job reprocesses: the weekly run skips the download when EPA's headers are unchanged. After merging such a change, run **Data update** with `force` (Actions → Data update → Run workflow), which validates and commits the result.
+- Label links: `safety.label_url` is the newest _full_ EPA label; files hand-reviewed as supplemental-only are listed in `pipeline/reference/label-files.json` and published as `safety.supplemental_labels` (only on the products that have them). `src/lib/labels.ts` applies the same identity guards to both.
 - `sync-status.json` is only rewritten when the catalog changes, so its `checked_at` is when the current catalog was produced, not the last check. Don't build a "last checked" UI on it; the Actions run history is the record of checks.
 - Scheduled cron times avoid `:00` on purpose: GitHub delays or drops scheduled runs at the top of the hour under load.
 - Pushes made with `GITHUB_TOKEN` don't trigger workflows, which is why `data-update.yml` dispatches the deploy explicitly.

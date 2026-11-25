@@ -13,7 +13,7 @@ import zipfile
 from contextlib import closing
 from xml.etree import ElementTree as ET
 
-from catalog import INGREDIENTS, SCOPE, norm, now, regno, valid_date
+from catalog import INGREDIENTS, LABEL_FILES, SCOPE, norm, now, regno, valid_date
 
 NS = '{http://schemas.openxmlformats.org/spreadsheetml/2006/main}'
 SOURCE_URL = 'https://www3.epa.gov/pesticides/appril/apprildatadump_public.xlsx'
@@ -153,8 +153,19 @@ def selected_sites(text):
     return [s for s, p in SITE_PATTERNS if p.search(text.strip())]
 
 
-def safety_fields(raw, registration, date_end):
-    """Keep product-row hazards distinct from base-linked ingredient evidence."""
+PPLS = 'https://www3.epa.gov/pesticides/chem_search/ppls/'
+LABEL_FILE = re.compile(r'(\d{6})-(\d{5})-(\d{8})\.pdf')
+
+
+def safety_fields(raw, registration, date_end, supplemental_only=None):
+    """Keep product-row hazards distinct from base-linked ingredient evidence.
+
+    The label link is the newest exact-registration PPLS file that holds a full label.
+    Files reviewed as supplemental-only (reference/label-files.json) are skipped for
+    the link but listed in `supplemental_labels` when newer than the chosen label.
+    """
+    if supplemental_only is None:
+        supplemental_only = LABEL_FILES['supplemental_only']
     word = str(raw.get('SIGNAL_WORD') or '').strip()
     normalized = word.upper()
     recognized = normalized in ('DANGER', 'WARNING', 'CAUTION', 'NONE')
@@ -165,7 +176,7 @@ def safety_fields(raw, registration, date_end):
     if raw.get('REG_TYPE') == 'Sec3' and len(registration.split('-')) == 2:
         for filename in str(raw.get('LABEL_NAMES') or '').split(','):
             filename = filename.strip()
-            m = re.fullmatch(r'(\d{6})-(\d{5})-(\d{8})\.pdf', filename)
+            m = LABEL_FILE.fullmatch(filename)
             if not m or '-'.join(str(int(x)) for x in m.group(1, 2)) != registration:
                 continue
             try:
@@ -174,8 +185,13 @@ def safety_fields(raw, registration, date_end):
                 continue
             if date <= date_end:
                 labels.append((date, filename))
-    label = max(labels) if labels else None
-    return {
+    full = [x for x in labels if x[1] not in supplemental_only]
+    label = max(full) if full else None
+    supplemental = sorted(
+        (x for x in set(labels) if x[1] in supplemental_only and (label is None or x > label)),
+        reverse=True,
+    )
+    fields = {
         'signal_word': normalized if recognized else None,
         'signal_word_raw': word,
         'signal_word_state': 'reported-none'
@@ -189,14 +205,27 @@ def safety_fields(raw, registration, date_end):
         'restricted_use_raw': rup,
         'restricted_use_reason': str(raw.get('RUP_REASON') or '').strip(),
         'basis': 'EPA product row; current label not reviewed',
-        'label_url': 'https://www3.epa.gov/pesticides/chem_search/ppls/' + label[1]
-        if label
-        else None,
+        'label_url': PPLS + label[1] if label else None,
         'label_date': label[0] if label else None,
-        'label_basis': 'Latest exact-registration filename listed in the workbook'
-        if label
-        else 'No exact-registration label filename available',
+        'label_basis': (
+            'Latest exact-registration filename listed in the workbook'
+            if label and not supplemental
+            else 'Latest exact-registration full label listed in the workbook; newer supplemental-only labeling listed separately'
+            if label
+            else 'No exact-registration label filename available'
+        ),
     }
+    if supplemental:
+        # Only present when there is something to list, so unaffected products are unchanged.
+        fields['supplemental_labels'] = [
+            {
+                'url': PPLS + name,
+                'date': date,
+                'description': supplemental_only[name].get('description', 'Supplemental labeling'),
+            }
+            for date, name in supplemental
+        ]
+    return fields
 
 
 def read_workbook(path, date_end, progress=False, tracked=()):

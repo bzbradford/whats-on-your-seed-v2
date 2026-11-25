@@ -23,6 +23,14 @@ export interface Safety {
   label_url?: string | null;
   label_date?: string | null;
   label_basis?: string;
+  /** Newer PPLS files reviewed as supplemental-only (pipeline/reference/label-files.json). */
+  supplemental_labels?: SupplementalLabel[];
+}
+
+export interface SupplementalLabel {
+  url: string;
+  date: string;
+  description: string;
 }
 
 export interface ProviderDocument {

@@ -12,7 +12,7 @@ _Last updated: 2026-11-25_
 
 ## Next
 
-1. Labels: the user wants both the EPA-accepted label and the manufacturer label. Findings and options are in PLAN.md "Labels"; waiting on a decision about TELUS Label API licensing.
+1. Labels: links now go to the newest full EPA-accepted label, with newer supplemental-only labeling listed beside it (PLAN.md "Labels"). Manufacturer specimen labels wait on the TELUS Label API question (PLAN.md "Backlog", owned by the user/CPN).
 2. "Needs review" keeps base-linked distributor records (user agreed, 2026-11-25).
 3. Phase 4: compact `?embed` layout tested in a cross-origin iframe; accessibility pass; design iteration (new styles go in scoped component styles; `legacy.css` stays the base).
 4. Parked: state registration (PLAN.md "Future: state registration").

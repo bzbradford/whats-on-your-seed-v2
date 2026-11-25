@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "note": "EPA PPLS files that hold supplemental labeling only (no full product label). The catalog links the newest full label instead and lists newer supplemental-only files separately. Reviewed by reading each PDF; add entries when a new one is found. Filenames are exact PPLS names.",
+  "supplemental_only": {
+    "000264-00968-20260625.pdf": {
+      "reviewed_on": "2026-11-25",
+      "description": "Supplemental label: updated seed bag label requirements and rotational crop plant-back intervals (expires 2029)"
+    },
+    "062719-00412-20080103.pdf": {
+      "reviewed_on": "2026-11-25",
+      "description": "Supplemental labeling (2 pages)"
+    },
+    "062719-00412-20070709.pdf": {
+      "reviewed_on": "2026-11-25",
+      "description": "Supplemental labeling (1 page)"
+    },
+    "062719-00493-20070306.pdf": {
+      "reviewed_on": "2026-11-25",
+      "description": "Supplemental labeling (1 page)"
+    }
+  }
+}
