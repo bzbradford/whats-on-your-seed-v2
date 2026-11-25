@@ -32,6 +32,7 @@ import {
   fetchStatus,
   publicationChanged,
 } from './sync';
+import { loadView, saveView, type ProductView } from './preferences';
 import type { Catalog, SyncStatus, UpdateHistory } from './types';
 
 /** The five tabs of the Oct 19 reference. */
@@ -70,6 +71,8 @@ export class AppState {
   filtersOpen = $state(false);
   toast = $state({ message: '', visible: false });
   live = $state<LiveRegions>({ status: '', alert: '' });
+  /** Cards or List on the products tab; remembered per viewer. */
+  productView = $state<ProductView>(loadView());
   matrixQuery = $state('');
   ingredientQuery = $state('');
 
@@ -219,6 +222,11 @@ export class AppState {
   reset(): void {
     this.filters = resetFilters(this.filters, this.catalog);
     this.#pageState = { key: '', page: 1 };
+  }
+
+  setProductView(view: ProductView): void {
+    this.productView = view;
+    saveView(view);
   }
 
   // ---- comparison ----------------------------------------------------------

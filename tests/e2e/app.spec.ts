@@ -238,6 +238,88 @@ test.describe('products', () => {
   });
 });
 
+test.describe('list view', () => {
+  test.beforeEach(async ({ page }) => open(page));
+
+  test('the Cards / List pill switches views and is remembered', async ({ page }) => {
+    const pill = page.getByRole('group', { name: 'Results view' });
+    await expect(pill.getByRole('radio', { name: 'Cards' })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    );
+    await pill.getByRole('radio', { name: 'List' }).click();
+    await expect(page.locator('.product-row')).toHaveCount(25);
+    await expect(page.locator('.product')).toHaveCount(0);
+    // Keyboard: arrow keys move between the two radios.
+    await pill.getByRole('radio', { name: 'List' }).focus();
+    await page.keyboard.press('ArrowLeft');
+    await expect(pill.getByRole('radio', { name: 'Cards' })).toBeFocused();
+    await page.reload();
+    await page.locator('.product-row').first().waitFor();
+    await expect(pill.getByRole('radio', { name: 'List' })).toHaveAttribute('aria-checked', 'true');
+  });
+
+  test('rows show the key facts, open the dialog, and compare', async ({ page }) => {
+    await page.getByRole('radio', { name: 'List' }).click();
+    await page.locator('#query').fill('100-1508');
+    const row = page.locator('.product-row');
+    await expect(row).toHaveCount(1);
+    for (const text of [
+      'Cruisermaxx Vibrance',
+      'EPA 100-1508',
+      'Thiamethoxam',
+      '20.8%',
+      'Fungicide',
+      'CAUTION',
+      'IRAC 4A',
+      'Corn',
+    ])
+      await expect(row).toContainText(text);
+    await expect(row.locator('.label-action')).toHaveAttribute('target', '_blank');
+    await row.locator('.col-crops').click();
+    await expect(page.locator('#dialog-title')).toHaveText('Cruisermaxx Vibrance');
+    await page.keyboard.press('Escape');
+    // Keyboard path: the name button.
+    await row.locator('[data-detail="100-1508"]').focus();
+    await page.keyboard.press('Enter');
+    await expect(page.locator('#dialog-title')).toBeFocused();
+    await page.keyboard.press('Escape');
+    await expect(row.locator('[data-detail="100-1508"]')).toBeFocused();
+    await row.locator('[data-select="100-1508"]').check();
+    await expect(page.locator('#dialog')).toBeHidden();
+    await expect(page.locator('#selected-count')).toHaveText('1 of 4 products selected');
+  });
+
+  test('column headers sort, with aria-sort, and stick to the top', async ({ page }) => {
+    await page.getByRole('radio', { name: 'List' }).click();
+    const header = page.locator('thead th.col-product');
+    await expect(header).toHaveAttribute('aria-sort', 'ascending');
+    await header.getByRole('button').click();
+    await expect(header).toHaveAttribute('aria-sort', 'descending');
+    const names = await page.locator('.row-name').allTextContents();
+    expect(names).toEqual([...names].sort((a, b) => b.localeCompare(a)));
+    await page.locator('thead th.col-signal button').click();
+    await expect(page.locator('thead th.col-signal')).toHaveAttribute('aria-sort', 'descending');
+    await expect(page.locator('.row-signal').first()).toHaveText('DANGER');
+    expect(
+      await page
+        .locator('thead th')
+        .first()
+        .evaluate((e) => getComputedStyle(e).position),
+    ).toBe('sticky');
+  });
+
+  test('phones: rows stack without sideways scrolling', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.getByRole('radio', { name: 'List' }).click();
+    await expect(page.locator('.product-row').first()).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+      390,
+    );
+    await expect(page.locator('.product-list thead')).toBeHidden();
+  });
+});
+
 test.describe('comparison', () => {
   test.beforeEach(async ({ page }) => open(page));
 

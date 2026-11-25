@@ -11,6 +11,7 @@
   } from '../lib/csv';
   import {
     DATE_ERROR,
+    SORTS,
     appliedFilters,
     clearChip,
     defaultEnd,
@@ -21,6 +22,8 @@
   import Icon from './Icon.svelte';
   import PrintViewButton from './PrintViewButton.svelte';
   import ProductCard from './ProductCard.svelte';
+  import ProductList from './ProductList.svelte';
+  import ViewToggle from './ViewToggle.svelte';
 
   const app = getApp();
   const ready = $derived(app.loadState === 'ready');
@@ -343,13 +346,16 @@
         <h3 id="count" tabindex="-1">
           {app.loadState === 'unavailable' ? 'No live catalog' : ready ? app.count : ''}
         </h3>
-        <label class="small muted">
-          Sort <select id="sort" aria-label="Sort products" bind:value={app.filters.sort}>
-            <option value="name">Product name A–Z</option><option value="updated">
-              Status date, newest
-            </option>
-          </select>
-        </label>
+        <div class="result-controls">
+          <ViewToggle />
+          <label class="small muted">
+            Sort <select id="sort" aria-label="Sort products" bind:value={app.filters.sort}>
+              {#each Object.entries(SORTS) as [value, sort] (value)}
+                <option {value}>{sort.label}</option>
+              {/each}
+            </select>
+          </label>
+        </div>
       </div>
       <div id="applied" class="applied" role="group" aria-label="Applied product filters">
         {#if ready && !app.result.invalidDates}
@@ -377,28 +383,32 @@
             <p>Choose a valid status-date range.</p>
           </div>
         {:else}
-          {#each app.pageProducts as p (p.id)}
-            <ProductCard product={p} />
+          {#if app.pageProducts.length && app.productView === 'list'}
+            <ProductList products={app.pageProducts} />
           {:else}
-            <div class="empty">
-              <h3>No matching products.</h3>
-              <p class="muted">Try a broader search or reset your filters.</p>
-              <button
-                data-reset
-                onclick={() => {
-                  app.reset();
-                  focusById('query');
-                }}
-              >
-                Reset filters
-              </button>
-              <!-- Deviation: Oct 19 also pointed at the state-evidence filter, which isn't ported. -->
-              <p class="small muted">
-                An empty result does not prove a product is unavailable or unregistered. Check the
-                current label and relevant state authority before use.
-              </p>
-            </div>
-          {/each}
+            {#each app.pageProducts as p (p.id)}
+              <ProductCard product={p} />
+            {:else}
+              <div class="empty">
+                <h3>No matching products.</h3>
+                <p class="muted">Try a broader search or reset your filters.</p>
+                <button
+                  data-reset
+                  onclick={() => {
+                    app.reset();
+                    focusById('query');
+                  }}
+                >
+                  Reset filters
+                </button>
+                <!-- Deviation: Oct 19 also pointed at the state-evidence filter, which isn't ported. -->
+                <p class="small muted">
+                  An empty result does not prove a product is unavailable or unregistered. Check the
+                  current label and relevant state authority before use.
+                </p>
+              </div>
+            {/each}
+          {/if}
         {/if}
       </div>
       <nav
@@ -465,5 +475,11 @@
     .applied .chip.removable span {
       display: none;
     }
+  }
+  .result-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 16px;
   }
 </style>

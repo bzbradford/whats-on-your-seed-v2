@@ -108,11 +108,13 @@ After sign-off, parity was retired and these landed one commit each, with tests:
 
 Goal: make the products view scannable and the page less tall, keep the Oct 19 character, and introduce Bits UI where it improves controls. Now that parity is retired, styling changes go in scoped component styles on top of `legacy.css`.
 
-1. **Card / List view pill.** A segmented pill toggle (Bits UI `ToggleGroup`) switches between:
+1. [x] **Card / List view pill.** A segmented pill toggle (Bits UI `ToggleGroup`) switches between:
    - **List:** dense rows with sortable column headers in a sticky header row. Columns: product (name; registrant · EPA no.), active ingredients with %, purpose badges, signal word / RUP, FRAC/IRAC codes when assigned, crops (short), and label + compare actions. Clicking a row opens the existing detail dialog. On phones, rows stack compactly.
    - **Card:** the friendlier view, slimmed down.
 
    Both must show the most relevant facts per product. Remember the choice (localStorage in try/catch; the URL comes with 4b).
+
+   Done: `ViewToggle` (Bits `ToggleGroup`, radios), `ProductList` (table with sticky headers; Product, Active ingredient, Purpose and Signal word sort both ways with `aria-sort`; the name button is the keyboard path to the dialog, a click elsewhere on the row is a mouse shortcut; phones get compact stacked rows and sort with the Sort menu). Rows list up to four ingredients (longer Bt stacks show three and "+N more"), crop families (exact sites in the tooltip and dialog), FRAC/IRAC when assigned, the label link and supplemental labeling, and Compare. Preference in `src/lib/preferences.ts` (`cpn-seed-view`). Sort keys gained reverse orders, registrant and signal severity (`SORTS` in `filters.ts`).
 
 2. **Cut per-product boilerplate:**
    - the label-PDF explanation appears once, in the help text above the results

@@ -3,7 +3,8 @@
   import type { Product } from '../lib/types';
   import Icon from './Icon.svelte';
 
-  let { product }: { product: Product } = $props();
+  // `compact`: shorter visible text for the List view (the accessible name stays full).
+  let { product, compact = false }: { product: Product; compact?: boolean } = $props();
   const access = $derived(labelAccess(product));
   const action = $derived(labelActionText(product, access));
 </script>
@@ -16,5 +17,9 @@
   rel="noopener noreferrer"
   aria-label={action.ariaLabel}
 >
-  <Icon name={access.pdf ? 'download' : 'search'} />{action.title}<span aria-hidden="true">↗</span>
+  <Icon name={access.pdf ? 'download' : 'search'} />{compact
+    ? access.pdf
+      ? 'EPA label (PDF)'
+      : 'Find label'
+    : action.title}<span aria-hidden="true">↗</span>
 </a>

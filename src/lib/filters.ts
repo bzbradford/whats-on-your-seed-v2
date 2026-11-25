@@ -8,7 +8,59 @@ import type { Catalog, Product } from './types';
 
 export const PAGE_SIZE = 25;
 
-export type SortKey = 'name' | 'updated';
+/**
+ * Result orders. Each list column sorts by a key and its reverse (`-desc` / `-asc`);
+ * the Sort menu offers all of them. `name` and `updated` are the legacy options.
+ */
+export const SORTS = {
+  name: { label: 'Product name A–Z', column: 'name', reverse: 'name-desc' },
+  'name-desc': { label: 'Product name Z–A', column: 'name', reverse: 'name' },
+  updated: { label: 'Status date, newest', column: null, reverse: 'updated-asc' },
+  'updated-asc': { label: 'Status date, oldest', column: null, reverse: 'updated' },
+  registrant: { label: 'Registrant A–Z', column: null, reverse: 'registrant-desc' },
+  'registrant-desc': { label: 'Registrant Z–A', column: null, reverse: 'registrant' },
+  ingredient: { label: 'Active ingredient A–Z', column: 'ingredient', reverse: 'ingredient-desc' },
+  'ingredient-desc': {
+    label: 'Active ingredient Z–A',
+    column: 'ingredient',
+    reverse: 'ingredient',
+  },
+  purpose: { label: 'Purpose A–Z', column: 'purpose', reverse: 'purpose-desc' },
+  'purpose-desc': { label: 'Purpose Z–A', column: 'purpose', reverse: 'purpose' },
+  signal: { label: 'Signal word, most severe first', column: 'signal', reverse: 'signal-asc' },
+  'signal-asc': { label: 'Signal word, least severe first', column: 'signal', reverse: 'signal' },
+} as const;
+
+export type SortKey = keyof typeof SORTS;
+export type SortColumn = 'name' | 'ingredient' | 'purpose' | 'signal';
+
+/** The sort a column header applies: its first key, or the reverse if already sorted by it. */
+export function columnSort(current: SortKey, column: SortColumn): SortKey {
+  if (SORTS[current].column === column) return SORTS[current].reverse;
+  return column;
+}
+
+/** aria-sort for a list column header. */
+export function ariaSort(
+  current: SortKey,
+  column: SortColumn,
+): 'ascending' | 'descending' | 'none' {
+  if (SORTS[current].column !== column) return 'none';
+  // Severity: "most severe first" reads as descending.
+  if (column === 'signal') return current === 'signal' ? 'descending' : 'ascending';
+  return current.endsWith('-desc') ? 'descending' : 'ascending';
+}
+
+const SIGNAL_RANK: Record<string, number> = {
+  DANGER: 0,
+  WARNING: 1,
+  CAUTION: 2,
+  NONE: 3,
+  NOT_SUPPLIED: 4,
+};
+
+const firstIngredient = (p: Product) =>
+  p.ingredients.map((a) => a.name.toLowerCase()).sort()[0] ?? '';
 export type RupFilter = '' | 'yes' | 'no' | 'unknown';
 export type QualityFilter = '' | 'verified' | 'base-linked' | 'needs-review';
 
@@ -132,11 +184,32 @@ export function matchesFilters(catalog: Catalog, p: Product, f: Filters): boolea
 }
 
 export function sortProducts(products: Product[], sort: SortKey): Product[] {
-  return products.sort(
-    sort === 'updated'
-      ? (a, b) => (b.status_date || '').localeCompare(a.status_date || '')
-      : (a, b) => a.name.localeCompare(b.name),
-  );
+  const byName = (a: Product, b: Product) => a.name.localeCompare(b.name);
+  /** Compare by a text key; empty values always last; ties by name. */
+  const byText = (key: (p: Product) => string, dir: 1 | -1) => (a: Product, b: Product) => {
+    const x = key(a);
+    const y = key(b);
+    if (!x !== !y) return x ? -1 : 1;
+    return dir * x.localeCompare(y) || byName(a, b);
+  };
+  const signal = (dir: 1 | -1) => (a: Product, b: Product) =>
+    dir * (SIGNAL_RANK[signalKey(a)] - SIGNAL_RANK[signalKey(b)]) || byName(a, b);
+  const compare: Record<SortKey, (a: Product, b: Product) => number> = {
+    name: byName,
+    'name-desc': (a, b) => byName(b, a),
+    // Legacy order: newest status date first; no tie-break (stable).
+    updated: (a, b) => (b.status_date || '').localeCompare(a.status_date || ''),
+    'updated-asc': byText((p) => p.status_date, 1),
+    registrant: byText((p) => p.registrant, 1),
+    'registrant-desc': byText((p) => p.registrant, -1),
+    ingredient: byText(firstIngredient, 1),
+    'ingredient-desc': byText(firstIngredient, -1),
+    purpose: byText((p) => p.purposes.join(', '), 1),
+    'purpose-desc': byText((p) => p.purposes.join(', '), -1),
+    signal: signal(1),
+    'signal-asc': signal(-1),
+  };
+  return products.sort(compare[sort] ?? byName);
 }
 
 export interface FilterResult {
