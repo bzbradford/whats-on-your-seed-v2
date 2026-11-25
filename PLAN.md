@@ -38,7 +38,7 @@ Goal: rebuild the legacy monolithic `legacy/static/index.html` (~125 KB, one inl
 - [x] First manual `data-update` run succeeded on GitHub (run 45663835699): bot commit → dispatched deploy → live `sync-status.json` updated
 - **Catalog split: deferred.** The 2.8 MB file is ~287 KB gzipped as served by Pages. Moving `target_pests_raw` (used only by the comparison matrix) to a lazy file would cut that to ~126 KB, but adds lazy-loading to compare, CSV export and the standalone build. Revisit after parity if load time matters.
 
-### 3. Port the UI with exact visual parity — done (branch `phase-3b-ui`, awaiting review)
+### 3. Port the UI with exact visual parity — done (merged to `main` in PR #1, 2026-11-25)
 
 The legacy look and behaviour are the target: replicate first, iterate after.
 
@@ -85,7 +85,7 @@ The legacy look and behaviour are the target: replicate first, iterate after.
 
 Port order: catalog load → shell/header/tabs → product list/search/filters/pager → product detail dialog → comparison matrix → ingredient guide → guides & sources → exports/print → sync/update status. Feature checklist below.
 
-### 3c. Post-parity fixes — done (branch `phase-3b-ui`)
+### 3c. Post-parity fixes — done (merged in PR #1)
 
 After sign-off, parity was retired and these landed one commit each, with tests:
 
@@ -157,6 +157,21 @@ Taken from the legacy `static/index.html`. Tick items when ported **and** tested
 - [x] Results CSV (all filtered rows across pages, provenance, CSV-injection-safe cells)
 - [x] Label links CSV
 - [x] Print: comparison matrix and product dialog (Oct 19). The master-era "Print this view" buttons were not brought forward
+
+## Labels: EPA-accepted vs manufacturer labels (investigated 2026-11-25)
+
+**What we link today:** `safety.label_url` is the newest PPLS file listed in the APPRIL workbook for the exact Section 3 registration. A PPLS file is EPA's stamped-label package: a 1–3 page EPA acceptance letter, then the EPA-accepted master label. A sample of 19 random products all followed that pattern. Problems: the PDF opens on the letter; the newest file is sometimes _supplemental_ labeling (e.g. 100-1648) rather than the full label; master labels include bracketed optional text, alternate brand names (ABNs) and reviewer notes, so they're not the marketed container label.
+
+**The user wants both:** the EPA-accepted label _and_ the manufacturer's marketed (specimen) label, rather than opening the EPA PDF at a particular page.
+
+**Manufacturer-label sources:**
+
+- **TELUS Agronomy** (formerly Agrian) and **CDMS**, both now TELUS. Labels are manufacturer-approved. Licensable through the **TELUS Label API (formerly the CDMS API)** for ag-tech use; no public pricing. Agrian's terms: database content is for general information and doesn't replace the manufacturer's label.
+- **Greenbook** (Agworld/Semios): API by request, licensed commercially. Its terms (§9) restrict labels to individual non-commercial use and forbid giving third parties access or building a database from it; `/search` is disallowed in robots.txt.
+- **Manufacturer websites:** no common structure (some behind sign-up); scraping would be brittle and is not planned. Retailers (e.g. FBN) also host specimen labels.
+- **Plain link-outs** (search by reg number, no data copied) could not be verified: the Agrian/TELUS pages return 403 to automated fetches, CDMS search is JavaScript-only with no verified URL pattern, and Greenbook search is robots-disallowed. Would need checking by hand in a browser.
+
+**Next steps (pending the user):** (1) clearer wording on the EPA label link now ("EPA-accepted label, follows EPA's acceptance letter"); (2) pipeline: prefer the latest _full_ label over supplemental-only files; (3) ask TELUS about Label API terms for an extension/university non-commercial tool (CPN may already have a relationship); (4) if licensed, add a "Manufacturer label" link next to the EPA label.
 
 ## Open decisions
 

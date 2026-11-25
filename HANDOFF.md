@@ -5,18 +5,17 @@ _Last updated: 2026-11-25_
 ## Where things stand
 
 - Repo: `bzbradford/whats-on-your-seed-v2`, a fork of `danieham-97/crop-protection-network` (remote `upstream`, reference only; we won't merge back). Default branch is `main`.
-- Live: https://bzbradford.github.io/whats-on-your-seed-v2/ (also `?embed` and `/whats-on-your-seed-standalone.html`). `main` still shows the bare Phase 1 product list.
+- Live: https://bzbradford.github.io/whats-on-your-seed-v2/ (also `?embed` and `/whats-on-your-seed-standalone.html`). `main` now serves the full Oct 19-style UI (PR #1 merged 2026-11-25; live render checked: 880 products, 5 tabs, no errors).
 - **Phase 1 (scaffold) and Phase 2 (pipeline) done.** See PLAN.md.
-- **Phase 3 (UI port with exact visual parity): done on branch `phase-3b-ui`, not merged.** The target changed: the user's chosen look is the **Oct 19 version** of the legacy app (upstream `435c0bf`, now in `legacy/static/`, see `legacy/REFERENCE.md`), not the streamlined master UI that `phase-3-ui` ported. `phase-3b-ui` re-ports onto Oct 19 (five tabs, cream hero, sidebar filters, cards, icons, Roboto Condensed), without the hero art or any state registration UI, and with the later About/citation/disclaimer/data-currency/online-refresh features brought forward. PLAN.md Phase 3 lists every deviation, where the brought-forward content sits, and the Oct 19 oddities kept on purpose.
+- **Phase 3 (UI port with exact visual parity): done and merged to `main` (PR #1).** The target changed: the user's chosen look is the **Oct 19 version** of the legacy app (upstream `435c0bf`, now in `legacy/static/`, see `legacy/REFERENCE.md`), not the streamlined master UI that `phase-3-ui` ported. `phase-3b-ui` re-ports onto Oct 19 (five tabs, cream hero, sidebar filters, cards, icons, Roboto Condensed), without the hero art or any state registration UI, and with the later About/citation/disclaimer/data-currency/online-refresh features brought forward. PLAN.md Phase 3 lists every deviation, where the brought-forward content sits, and the Oct 19 oddities kept on purpose.
 - Tests: Vitest unit tests and Playwright behaviour tests. The 23 Oct 19-vs-new screenshot comparisons (all at 0 px) were retired after the user signed off on the look.
 
 ## Next
 
-1. Review `phase-3b-ui` and merge it (agents don't open PRs or merge). After the Oct 19 port, the post-parity fixes in PLAN.md "3c" landed one commit each.
-2. Decide whether "Needs review" should exclude base-linked distributor records (PLAN.md 3c explains why it was left).
-3. The coordinator is investigating label PDF links that open EPA letters instead of specimen labels; label-URL logic in `src/lib/labels.ts` is unchanged until then.
-4. Phase 4: compact `?embed` layout tested in a cross-origin iframe; accessibility pass; design iteration (new styles go in scoped component styles; `legacy.css` stays the base).
-5. Parked: state registration (PLAN.md "Future: state registration").
+1. Labels: the user wants both the EPA-accepted label and the manufacturer label. Findings and options are in PLAN.md "Labels"; waiting on a decision about TELUS Label API licensing.
+2. "Needs review" keeps base-linked distributor records (user agreed, 2026-11-25).
+3. Phase 4: compact `?embed` layout tested in a cross-origin iframe; accessibility pass; design iteration (new styles go in scoped component styles; `legacy.css` stays the base).
+4. Parked: state registration (PLAN.md "Future: state registration").
 
 ## Things to know
 
