@@ -32,10 +32,31 @@ Until the port is complete, `seed-treatment-database/` holds the **legacy** app 
 
 ## Commands
 
-Legacy baseline (passes as of 2026-11-25):
-
 ```bash
-python3 seed-treatment-database/test_project.py --require-node
+pnpm install            # pnpm only; version pinned via packageManager
+pnpm dev                # copy data into public/data/, start Vite dev server
+pnpm build              # Pages build -> dist/
+pnpm build:standalone   # offline single file -> dist-standalone/index.html (catalog inlined)
+pnpm preview            # serve dist/
+pnpm test               # Vitest unit tests (tests/unit/)
+pnpm test:e2e           # build, then Playwright against vite preview (tests/e2e/)
+pnpm lint / pnpm format # Prettier + ESLint (lint runs as the pre-commit hook)
+pnpm check              # svelte-check, fails on any warning
+pnpm verify             # lint + check + unit tests + both builds (CI also runs e2e)
+python3 seed-treatment-database/test_project.py --require-node   # legacy suite
 ```
 
-New commands will be added here as the scaffold lands.
+## Key files
+
+- `src/lib/catalog.ts` — catalog validation, fetch, and `loadCatalog()` (fetch on Pages; inlined `?raw` import when `MODE === 'standalone'`, dead-code-eliminated from the Pages bundle)
+- `src/lib/view-mode.ts` — `?embed` → compact layout
+- `src/lib/types.ts` — catalog types (partial; grow as features are ported)
+- `scripts/sync-data.js` — **temporary**: copies legacy `seed-treatment-database/static/*.json` into gitignored `public/data/` before dev/build. Goes away when the pipeline writes there (Phase 2).
+- `vite.config.js` — both build modes, `$data` alias, Vitest config
+- `.github/workflows/deploy.yaml` — CI (lint, check, unit, builds, e2e) and Pages deploy from `main`
+
+## Gotchas
+
+- TypeScript is pinned to 6.0.x: typescript-eslint and svelte-check don't support TS 7 yet.
+- Playwright's `webServer` must invoke `vite preview` directly, not through `pnpm`, or the server is orphaned and Playwright hangs on exit.
+- Don't `import` the catalog JSON as a module (TS would infer a type from 2.8 MB of JSON). Use `?raw` + `JSON.parse` + `parseCatalog`.

@@ -5,38 +5,46 @@ Goal: rebuild the legacy monolithic `seed-treatment-database/static/index.html` 
 ## Phases
 
 ### 0. Setup — done
+
 - [x] Fork to `bzbradford`, rename to `whats-on-your-seed-v2`, add `upstream` remote
 - [x] Baseline: legacy test suite passes
 - [x] Working docs: CLAUDE.md, HANDOFF.md, PLAN.md, `tmp/` session log
 - [x] Default branch renamed `master` → `main` (workflow refs updated)
 
 ### 1. Scaffold
-- [ ] Replace the root `.gitignore` (stock Visual Studio template) with one for this stack
-- [ ] Svelte 5 + Vite + TS + Tailwind v4 at repo root (pnpm, eslint, prettier, svelte-check, simple-git-hooks), mirroring `../whats-on-your-seed`
-- [ ] Vitest + Playwright installed and running with one trivial test each
-- [ ] `pnpm verify` = lint + check + unit tests + build
-- [ ] Two build modes: Pages (fetches `data/catalog.json`) and single-file (`vite-plugin-singlefile`, catalog inlined)
-- [ ] GitHub Actions: CI on PR/push; Pages deploy from the default branch
-- [ ] Load the catalog and render a bare product list end-to-end on Pages
+
+- [x] Replace the root `.gitignore` (stock Visual Studio template) with one for this stack
+- [x] Svelte 5 + Vite + TS + Tailwind v4 at repo root (pnpm, eslint, prettier, svelte-check, simple-git-hooks), mirroring `../whats-on-your-seed`
+- [x] Vitest + Playwright installed and running (catalog loader, view mode, smoke e2e)
+- [x] `pnpm verify` = lint + check + unit tests + both builds
+- [x] Two build modes: Pages (fetches `data/catalog.json`) and single-file (`vite-plugin-singlefile`, catalog inlined)
+- [x] `?embed` view mode stub (hides title, fixed-height scroll)
+- [x] GitHub Actions: CI on PR/push; Pages deploy from `main`; standalone published as `whats-on-your-seed-standalone.html`
+- [ ] Confirm the first Pages deploy works (needs Actions enabled on the fork; see HANDOFF)
+- [ ] E2E test for the standalone file opened from `file://`
 
 ### 2. Pipeline
+
 - [ ] Move Python to `pipeline/` with `pyproject.toml` (uv), port unittest → pytest, add ruff
-- [ ] Point pipeline output at the frontend's data location; update the update workflow
+- [ ] Point pipeline output at `public/data/` (committed) and delete `scripts/sync-data.js`; update the update workflow
 - [ ] Repoint `PUBLISHED_DATA_URL` (currently danieham-97 raw GitHub) to our Pages URL
 - [ ] Decide on catalog slimming (2.8 MB; `target_pests_raw` is large); maybe split into a list index + lazy-loaded details
 - [ ] TypeScript types for the catalog schema (generated or hand-written, checked against the fixture)
 - [ ] Enable Actions on the fork only once output paths are final
 
 ### 3. Port features (logic → `src/lib/*.ts` with Vitest; UI → components; Playwright per flow)
+
 See the inventory below. Port order: catalog load → product list/search/filters/pager → product detail dialog → comparison matrix → ingredient guide → guides & sources → exports/print → sync/update status.
 
 ### 4. Embed and polish
+
 - [ ] Compact embed layout (`?embed`), test inside an iframe on a page from a different origin
 - [ ] Accessibility pass (the legacy app has live regions `a11y-alert`/`a11y-status`, focus restore)
 - [ ] Branding (CPN palette, Roboto Condensed, logo) — see legacy `BRANDING.md`
 - [ ] Prune or consolidate the ~15 legacy markdown docs; rewrite README
 
 ### 5. Cutover
+
 - [ ] Parity check against the legacy app using the README's "Try these checks" table
 - [ ] Delete legacy `static/index.html`, preview builders, `.bat` files, `.cjs` tests
 
@@ -45,12 +53,14 @@ See the inventory below. Port order: catalog load → product list/search/filter
 Taken from the legacy `static/index.html`. Tick items when ported **and** tested.
 
 **Data & sync**
+
 - [ ] Load catalog (products, scope, ingredient_reference, education, label_specs, meta)
 - [ ] Single-file mode: embedded snapshot, poll the published catalog every 5 min, offline fallback, keep filters/selection on refresh
 - [ ] Sync-status/update-history display, "last EPA check", 48-hour staleness warning
 - [ ] Notice/warning banners, toast, screen-reader announcements
 
 **Products tab**
+
 - [ ] Text search (name, registration number, synonyms/aliases)
 - [ ] Filters: 14 seed-treatment sites, purpose, manufacturer, technology, FRAC group, IRAC group, signal word (incl. "None reported" vs missing), RUP flag, data quality, registration date range (with start > end validation)
 - [ ] Sort, pagination (25/page), result count, applied-filter summary, reset
@@ -59,24 +69,29 @@ Taken from the legacy `static/index.html`. Tick items when ported **and** tested
 - [ ] Compare checkboxes (max 4, persisted to localStorage), compare bar
 
 **Comparison matrix tab**
+
 - [ ] Picker with search/add, selection cap and order, clear
 - [ ] Side-by-side rows: dates, ingredients, FRAC/IRAC, target pests, label specs, warnings, sources; label-version/composition guards; no efficacy content
 - [ ] Matrix CSV export, print / save PDF
 
 **Ingredient guide**
+
 - [ ] Ingredient search, grid, per-ingredient details and product counts
 
 **Guides & sources tab**
+
 - [ ] Treatment types, FRAC/IRAC, signal words and warnings, BMPs/handling, abbreviations
 - [ ] Sources, coverage and update details, 14-site counts, citation, draft disclaimer
 - [ ] Fact sheet PDF download
 
 **Exports & print**
+
 - [ ] Results CSV (all filtered rows across pages, provenance, CSV-injection-safe cells)
 - [ ] Label links CSV
 - [ ] Print current view / results / guides
 
 ## Open decisions
+
 - Embed mode: query param vs separate `embed.html` entry (leaning query param, one build)
 - Catalog size strategy (see Phase 2)
 - What to do about fact sheet generation (`build_fact_sheet.py`, reportlab)

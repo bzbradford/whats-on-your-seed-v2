@@ -1,0 +1,10 @@
+pnpm-lock.yaml
+dist/
+dist-standalone/
+public/data/
+test-results/
+playwright-report/
+# Legacy app and pipeline: left as-is until ported
+seed-treatment-database/
+# Upstream-authored docs
+README.md
