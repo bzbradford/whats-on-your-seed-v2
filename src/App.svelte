@@ -67,8 +67,10 @@
   <div class="shell top">
     <a
       class="brand"
+      target="_blank"
+      rel="noopener noreferrer"
       href="https://cropprotectionnetwork.org/"
-      aria-label="Crop Protection Network home"
+      aria-label="Crop Protection Network home (opens in a new tab)"
     >
       <img
         class="brand-logo"
@@ -102,7 +104,9 @@
         </button>
       </div>
       <div class="hero-bottom">
-        <span>14 seed-treatment sites</span><span>EPA · Greenbook · CDMS</span><span id="hero-mode">
+        <span>14 seed-treatment sites</span><span>
+          EPA APPRIL data · saved Greenbook &amp; CDMS references
+        </span><span id="hero-mode">
           {heroModeText(app.loadState, app.catalog)}
         </span>
       </div>

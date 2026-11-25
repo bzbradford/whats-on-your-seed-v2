@@ -322,6 +322,14 @@ test.describe('comparison', () => {
 test.describe('guides and sources', () => {
   test.beforeEach(async ({ page }) => open(page));
 
+  test('the hero names EPA as the live source and the others as saved references', async ({
+    page,
+  }) => {
+    await expect(page.locator('.hero-bottom')).toContainText(
+      'EPA APPRIL data · saved Greenbook & CDMS references',
+    );
+  });
+
   test('hero shortcuts focus the product and ingredient searches', async ({ page }) => {
     await expect(page.locator('.hero-art')).toHaveCount(0);
     await page.locator('[data-start="ingredients"]').click();
@@ -557,7 +565,7 @@ test.describe('embedding', () => {
           .filter((a) => a.getAttribute('target') !== '_blank')
           .map((a) => a.getAttribute('href')),
       );
-    // The CPN logo link in the page header (hidden in ?embed) is the one exception, as in legacy.
-    expect(sameTab).toEqual(['https://cropprotectionnetwork.org/']);
+    expect(sameTab).toEqual([]);
+    await expect(page.locator('a.brand')).toHaveAttribute('rel', /noopener/);
   });
 });
