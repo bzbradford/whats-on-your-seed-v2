@@ -14,7 +14,7 @@
     "format": "prettier --write .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "pnpm build && playwright test",
+    "test:e2e": "pnpm build && pnpm build:standalone && playwright test",
     "verify": "pnpm lint && pnpm check && pnpm test && pnpm build && pnpm build:standalone"
   },
   "devDependencies": {

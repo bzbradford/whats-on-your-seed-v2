@@ -1,6 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
 
-// E2E tests run against the production Pages build (dist/) served by `vite preview`.
+// E2E tests run against the production Pages build (dist/) served by `vite preview`;
+// standalone.spec.ts opens dist-standalone/index.html from file://.
+
 export default defineConfig({
   testDir: 'tests/e2e',
   fullyParallel: true,

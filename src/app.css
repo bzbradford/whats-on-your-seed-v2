@@ -1,1 +1,8 @@
-@import 'tailwindcss';
+/*
+ * Tailwind theme + utilities only. Preflight (Tailwind's base reset) is left out on
+ * purpose: the legacy stylesheet (styles/legacy.css) assumes browser defaults, and
+ * the port must match the legacy rendering exactly (PLAN.md Phase 3).
+ */
+@layer theme, base, components, utilities;
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/utilities.css' layer(utilities);
