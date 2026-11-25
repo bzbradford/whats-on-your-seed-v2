@@ -166,3 +166,22 @@
 </div>
 <div id="a11y-status" class="sr-only" role="status" aria-atomic="true">{app.live.status}</div>
 <div id="a11y-alert" class="sr-only" role="alert" aria-atomic="true">{app.live.alert}</div>
+
+<style>
+  /*
+   * The Oct 19 hero reserved a second grid column (and 34% of the mobile width) for
+   * decorative art that isn't shipped. Let the copy take the full width. The paragraph
+   * keeps a readable measure: 740px, the cap in the legacy base hero rule.
+   */
+  @media screen {
+    .hero .shell {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .hero h1 {
+      max-width: none;
+    }
+    .hero p {
+      max-width: 740px;
+    }
+  }
+</style>

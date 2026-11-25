@@ -432,6 +432,27 @@ test.describe('mobile', () => {
   });
 });
 
+test.describe('hero', () => {
+  for (const width of [1280, 390])
+    test(`uses the full width without the removed art (${width}px)`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 900 });
+      await open(page);
+      const sizes = await page.evaluate(() => {
+        const box = (s: string) => document.querySelector(s)!.getBoundingClientRect().width;
+        const shell = document.querySelector('.hero .shell')!;
+        const style = getComputedStyle(shell);
+        return {
+          inner:
+            box('.hero .shell') - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight),
+          copy: box('.hero-copy'),
+          h1: box('.hero h1'),
+        };
+      });
+      expect(sizes.copy).toBeCloseTo(sizes.inner, 0);
+      expect(sizes.h1).toBeCloseTo(sizes.inner, 0);
+    });
+});
+
 test.describe('embedding', () => {
   test('?embed hides the page header and hero', async ({ page }) => {
     await open(page, './?embed');
