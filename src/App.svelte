@@ -1,22 +1,16 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import logo from './assets/cpn-logo-2022.png';
-  import seedPhoto from './assets/adam-sisson-treated-corn.jpg';
   import { AppState, type View } from './lib/app-state.svelte';
   import { setApp } from './lib/context';
-  import {
-    aboutDatesText,
-    aboutUpdateModeText,
-    catalogLastChanged,
-    citationText,
-    dataNote,
-    epaDataAsOf,
-    updateWarning,
-  } from './lib/currency';
-  import { fmt } from './lib/format';
+  import { heroModeText, loadedNotice, updateWarning } from './lib/currency';
+  import IconSprite from './components/IconSprite.svelte';
+  import Icon, { type IconName } from './components/Icon.svelte';
   import ProductsTab from './components/ProductsTab.svelte';
   import MatrixTab from './components/MatrixTab.svelte';
-  import ResourcesTab from './components/ResourcesTab.svelte';
+  import IngredientsTab from './components/IngredientsTab.svelte';
+  import GuideTab from './components/GuideTab.svelte';
+  import DataTab from './components/DataTab.svelte';
   import Disclaimer from './components/Disclaimer.svelte';
   import CompareBar from './components/CompareBar.svelte';
   import DetailDialog from './components/DetailDialog.svelte';
@@ -29,17 +23,21 @@
   );
 
   onMount(() => {
-    void app.start();
+    void app.load();
   });
 
-  const TABS: { id: View; label: string }[] = [
-    { id: 'products', label: 'Products' },
-    // One text node with its trailing space, as in legacy (split nodes shift glyphs).
-    { id: 'matrix', label: 'Compare ' },
-    { id: 'resources', label: 'Guides & sources' },
+  const TABS: { id: View; label: string; icon: IconName }[] = [
+    { id: 'products', label: 'Explore products', icon: 'seed' },
+    { id: 'matrix', label: 'Comparison matrix', icon: 'compare' },
+    { id: 'ingredients', label: 'Ingredient guide', icon: 'flask' },
+    { id: 'guide', label: 'Treatment guide', icon: 'book' },
+    { id: 'data', label: 'Sources & updates', icon: 'source' },
   ];
 
-  const warning = $derived(updateWarning(app.flags, app.status));
+  const notice = $derived(
+    updateWarning(app.flags, app.status) ??
+      loadedNotice(app.catalog, app.status, app.flags.usingEmbeddedSnapshot),
+  );
 
   function onTabKeydown(event: KeyboardEvent) {
     if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
@@ -63,6 +61,7 @@
   }
 </script>
 
+<IconSprite />
 <a href="#main" class="jump" onclick={skipToMain}>Skip to database</a>
 <header>
   <div class="shell top">
@@ -81,129 +80,52 @@
     </a><span class="tag" id="build-label">Seed treatment database</span>
   </div>
 </header>
-<section class="intro shell" aria-labelledby="page-title">
-  <div>
-    <h1 id="page-title">What’s on Your Seed?</h1>
-    <p>
-      Identify active ingredients in seed treatments and compare up to four products at a time. This
-      resource helps farmers, crop advisers, Extension educators, researchers, and industry
-      professionals make sense of product names and treatment components.
-    </p>
-    <p class="small muted">
-      Product facts come from EPA’s APPRIL registration export. Other reference sources are
-      identified separately.
-    </p>
-  </div>
-  <figure class="seed-photo">
-    <img
-      src={seedPhoto}
-      width="900"
-      height="600"
-      alt="Close-up of treated corn kernels with red and purple seed coatings."
-    />
-    <figcaption>Treated corn seed. Photo: Adam Sisson, Iowa State University.</figcaption>
-  </figure>
-</section>
-<div class="shell introduction-details">
-  <div class="catalog-summary" id="catalog-summary" aria-label="Catalog dates">
-    {#if app.loadState === 'loading'}
-      Connecting to the catalog…
-    {:else if app.loadState === 'unavailable'}
-      Live data not connected
-    {:else}
-      <span><strong>EPA data as of:</strong> {fmt(epaDataAsOf(app.catalog))}</span><span>
-        <strong>Catalog last changed:</strong>
-        {fmt(catalogLastChanged(app.catalog, app.status))}
-      </span><span>
-        {app.catalog.products.length.toLocaleString()} active registrations in this export
-      </span>
-    {/if}
-  </div>
-  <details class="about-tool" id="about-tool">
-    <summary>About this tool and how to use it</summary>
-    <div class="about-copy">
-      <h2>What it is and who it is for</h2>
+<!-- Deviation (user decision): the decorative hero art (img.hero-art) is not shipped. -->
+<section class="hero" aria-labelledby="page-title">
+  <div class="shell">
+    <div class="hero-copy">
+      <small>Seed treatment explorer</small>
+      <h1 id="page-title">What’s on <span>your seed?</span></h1>
       <p>
-        What’s on Your Seed? is an interactive product-identification and education resource for
-        people who grow crops, advise farmers, teach, or work with seed treatments. Its purpose is
-        to help users understand what is in a product and compare reported product facts.
+        Get to know the ingredients in seed treatments. Explore their purpose, compare product
+        facts, and connect every decision to the source.
       </p>
-      <h2>How it works</h2>
-      <p>
-        The catalog uses EPA’s APPRIL Excel export to identify active registrations matching the
-        seed-treatment sites listed in the crop filter. Records retain their full EPA registration
-        numbers. Ingredient classifications and guidance come from separately identified references;
-        saved Greenbook and CDMS references are distinguished from EPA data.
-      </p>
-      <p>
-        Known deltamethrin products and grain-storage-only entries are excluded. Crop groups are not
-        expanded into unverified uses. Missing ingredient information is flagged for review. Federal
-        registration does not establish state approval.
-      </p>
-      <h2>How to use it</h2>
-      <ol>
-        <li>
-          Search a product name, ingredient, or EPA number. Narrow results by crop or purpose; open <strong>
-            More filters
-          </strong> for technology, resistance groups, hazards, company, and dates.
-        </li>
-        <li>
-          Read the ingredients and source notes. Open <strong>Details &amp; label</strong> for the full
-          product record, or follow its label link.
-        </li>
-        <li>
-          Select <strong>Compare</strong> beside up to four products, then open
-          <strong>Compare</strong> to view the complete matrix. Downloads and printing are grouped with
-          the results.
-        </li>
-        <li>
-          Open <strong>Guides &amp; sources</strong> for abbreviations, ingredient information, treatment
-          types, signal words, warnings, and source details.
-        </li>
-      </ol>
-      <h2>Dates and updates</h2>
-      <p id="about-dates">
-        {app.loadState === 'ready'
-          ? aboutDatesText(app.catalog, app.status)
-          : 'Catalog dates will appear when data are loaded.'}
-      </p>
-      <p id="about-update-mode">
-        {app.loadState === 'ready'
-          ? aboutUpdateModeText(app.standalone)
-          : 'Downloaded copies are fixed snapshots. The hosted tool reads its published catalog.'}
-      </p>
-      <h2>How to cite this version</h2>
-      <p id="tool-citation">
-        {app.loadState === 'ready'
-          ? citationText(app.catalog)
-          : 'Citation details will appear when data are loaded.'}
-      </p>
-      <p class="small muted">
-        This is a suggested citation for this repository version. Final CPN authorship, publication
-        URL, and any DOI require CPN editorial confirmation.
-      </p>
+      <div class="hero-actions">
+        <button class="solid" data-start="products" onclick={() => app.start('products')}>
+          Explore products <Icon name="arrow" />
+        </button><button
+          class="secondary"
+          data-start="ingredients"
+          onclick={() => app.start('ingredients')}
+        >
+          Understand ingredients <Icon name="book" />
+        </button>
+      </div>
+      <div class="hero-bottom">
+        <span>14 seed-treatment sites</span><span>EPA · Greenbook · CDMS</span><span id="hero-mode">
+          {heroModeText(app.loadState, app.catalog)}
+        </span>
+      </div>
     </div>
-  </details>
-  <div class="notice" id="notice" role="status" aria-atomic="true">
-    {#if app.loadState === 'loading'}
-      Loading the database…
-    {:else if app.loadState === 'unavailable'}
-      <strong>Database connection pending</strong><span>
-        The verified catalog has not been connected. No example records are being shown as live
-        data. The tool will retry automatically.
-      </span>
-    {:else if warning}
-      <strong>{warning.title}</strong><span>{warning.message}</span>
-    {:else}
-      <strong>Data note:</strong><span>
-        {dataNote(app.catalog, app.flags.usingEmbeddedSnapshot)}
-      </span>
-    {/if}
   </div>
-</div>
+</section>
 <main class="shell" id="main" tabindex="-1">
-  <!-- svelte-ignore a11y_no_noninteractive_element_to_interactive_role -->
-  <nav class="tabs" aria-label="Tool views" role="tablist" onkeydown={onTabKeydown}>
+  <div class="start-strip" aria-label="How to use this tool">
+    <div class="start-step">
+      <span class="step-number" aria-hidden="true">01</span>
+      <p><strong>Find a product</strong>Search by name, ingredient, or crop.</p>
+    </div>
+    <div class="start-step">
+      <span class="step-number" aria-hidden="true">02</span>
+      <p><strong>Understand its purpose</strong>Explore ingredients and groups.</p>
+    </div>
+    <div class="start-step">
+      <span class="step-number" aria-hidden="true">03</span>
+      <p><strong>Compare the facts</strong>Review up to four formulations.</p>
+    </div>
+  </div>
+  <!-- svelte-ignore a11y_interactive_supports_focus -->
+  <div class="tabs" aria-label="Database sections" role="tablist" onkeydown={onTabKeydown}>
     {#each TABS as tab (tab.id)}
       <button
         role="tab"
@@ -214,15 +136,27 @@
         data-tab={tab.id}
         onclick={() => app.goTo(tab.id, true)}
       >
-        {tab.label}{#if tab.id === 'matrix'}<span id="nav-selected-count">
-            ({app.selectedProducts.length})
-          </span>{/if}
+        <Icon name={tab.icon} />{tab.label}
       </button>
     {/each}
-  </nav>
+  </div>
+  <div class="notice" id="notice" role="status" aria-atomic="true">
+    {#if app.loadState === 'loading'}
+      Loading the database…
+    {:else if app.loadState === 'unavailable'}
+      <strong>Database connection pending</strong><span>
+        The verified catalog has not been connected. No example records are being shown as live
+        data. The tool will retry automatically.
+      </span>
+    {:else}
+      <strong>{notice.title}</strong><span>{notice.message}</span>
+    {/if}
+  </div>
   <ProductsTab />
   <MatrixTab />
-  <ResourcesTab />
+  <IngredientsTab />
+  <GuideTab />
+  <DataTab />
   <Disclaimer />
 </main>
 <CompareBar />

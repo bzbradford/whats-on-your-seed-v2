@@ -46,7 +46,7 @@ afterEach(() => {
 
 async function started() {
   const app = new AppState({ standalone: false, baseUrl: './' });
-  await app.start();
+  await app.load();
   flushSync();
   return app;
 }
@@ -149,16 +149,13 @@ describe('AppState comparison and filters', () => {
     ]);
   });
 
-  it('returns to page 1 when a filter changes or the search is resubmitted', async () => {
+  it('returns to page 1 when a filter changes', async () => {
     const app = await started();
     app.page = 3;
     flushSync();
     expect(app.page).toBe(3);
     app.filters.purpose = 'Fungicide';
     flushSync();
-    expect(app.page).toBe(1);
-    app.page = 2;
-    app.research();
     expect(app.page).toBe(1);
   });
 

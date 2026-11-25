@@ -2,6 +2,9 @@
   import { getApp } from '../lib/context';
   import {
     UPDATE_WORKFLOW_URL,
+    aboutDatesText,
+    aboutUpdateModeText,
+    citationText,
     automaticUpdatesText,
     catalogLastChanged,
     epaDataAsOf,
@@ -11,6 +14,7 @@
   } from '../lib/currency';
   import { fmt } from '../lib/format';
   import ExtLink from './ExtLink.svelte';
+  import Icon from './Icon.svelte';
 
   const app = getApp();
   const m = $derived(app.catalog.meta);
@@ -21,6 +25,51 @@
     key === 'NONE' ? 'None reported by EPA' : key === 'NOT_SUPPLIED' ? 'Not supplied' : key;
 </script>
 
+<!--
+  Brought forward from the later (master-era) UI: About, dates and citation. The Oct 19
+  reference has no About section; these panels sit in Sources & updates. The usage steps
+  are reworded for the Oct 19 tabs and controls.
+-->
+<article class="panel full">
+  <h3>About this tool and how to use it</h3>
+  <p>
+    <strong>What it is and who it is for.</strong> What’s on Your Seed? is an interactive product-identification
+    and education resource for people who grow crops, advise farmers, teach, or work with seed treatments.
+    Its purpose is to help users understand what is in a product and compare reported product facts.
+  </p>
+  <p>
+    <strong>How it works.</strong> The catalog uses EPA’s APPRIL Excel export to identify active registrations
+    matching the seed-treatment sites listed in the crop filter. Records retain their full EPA registration
+    numbers. Ingredient classifications and guidance come from separately identified references; saved
+    Greenbook and CDMS references are distinguished from EPA data.
+  </p>
+  <p>
+    Known deltamethrin products and grain-storage-only entries are excluded. Crop groups are not
+    expanded into unverified uses. Missing ingredient information is flagged for review. Federal
+    registration does not establish state approval.
+  </p>
+  <p><strong>How to use it.</strong></p>
+  <ol>
+    <li>
+      Search a product name, ingredient, or EPA number in <strong>Explore products</strong>. Narrow
+      results by crop, purpose, technology, resistance groups, hazards, company, and dates.
+    </li>
+    <li>
+      Read the ingredients and source notes. Select a product name for the full product record, or
+      follow its label link.
+    </li>
+    <li>
+      Select <strong>Compare</strong> on up to four products, then open the
+      <strong>Comparison matrix</strong>. Exports sit beside the product search; the matrix has its
+      own export and print.
+    </li>
+    <li>
+      Open the <strong>Ingredient guide</strong>, <strong>Treatment guide</strong>, and
+      <strong>Sources &amp; updates</strong> for ingredient information, treatment types, signal words,
+      warnings, and source details.
+    </li>
+  </ol>
+</article>
 <!--
   Intentional deviation (PLAN.md Phase 3): legacy's "Automatic source checks" panel
   showed the last EPA check and a 48-hour staleness warning. Checks no longer commit,
@@ -41,6 +90,8 @@
     <dt>Catalog last changed</dt>
     <dd>{fmt(catalogLastChanged(app.catalog, app.status))}</dd>
   </dl>
+  <p>{aboutDatesText(app.catalog, app.status)}</p>
+  <p>{aboutUpdateModeText(app.standalone)}</p>
   <p>
     {app.flags.usingEmbeddedSnapshot
       ? 'The embedded snapshot is displayed. This download checks the published catalog when online and every five minutes while open.'
@@ -189,7 +240,9 @@
     contents are not automatically extracted. FRAC/IRAC references and the fact sheet have a
     separate editorial review date: {fmt(app.catalog.education?.reviewed_on)}.
   </p>
-  <button data-tab="guide" onclick={() => app.goTo('guide', true)}>Open treatment guide</button>
+  <button data-tab="guide" onclick={() => app.goTo('guide', true)}>
+    <Icon name="book" />Open treatment guide
+  </button>
 </article>
 <article class="panel full">
   <h3>Products by requested site</h3>
@@ -250,5 +303,13 @@
   <p>
     Percentages retain the EPA values and source basis; they are not application rates or efficacy
     scores.
+  </p>
+</article>
+<article class="panel full">
+  <h3>How to cite this version</h3>
+  <p id="tool-citation">{citationText(app.catalog)}</p>
+  <p class="small muted">
+    This is a suggested citation for this repository version. Final CPN authorship, publication URL,
+    and any DOI require CPN editorial confirmation.
   </p>
 </article>

@@ -1,6 +1,6 @@
 /* ?embed: compact layout for iframes. Minimal until Phase 4. */
 html[data-view='embed'] header,
-html[data-view='embed'] .intro {
+html[data-view='embed'] .hero {
   display: none;
 }
 html[data-view='embed'] {

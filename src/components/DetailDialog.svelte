@@ -61,9 +61,7 @@
 >
   <div class="dialog-head">
     <h2 id="dialog-title" tabindex="-1" bind:this={title}>{shown.title}</h2>
-    <button id="close-dialog" aria-label="Close dialog" onclick={() => app.closeDialog()}>
-      Close
-    </button>
+    <button id="close-dialog" aria-label="Close dialog" onclick={() => app.closeDialog()}>✕</button>
   </div>
   <div class="dialog-body" id="dialog-body">
     {#if product}

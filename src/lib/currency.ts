@@ -77,13 +77,38 @@ export function importedAt(catalog: Catalog): string | undefined {
   return catalog.meta.imported_at || catalog.meta.last_successful_sync;
 }
 
-export function dataNote(catalog: Catalog, usingEmbeddedSnapshot: boolean): string {
-  const missing = catalog.meta.audit?.missing_formulation_products;
-  return (
-    (missing ? missing + ' records lack ingredients and need an exclusion check. ' : '') +
-    (usingEmbeddedSnapshot ? 'This file is showing its embedded snapshot. ' : '') +
-    'Product listings are not efficacy or safety rankings.'
-  );
+/**
+ * The Oct 19 "EPA workbook loaded" notice. Deviation: legacy's "Last official workbook
+ * retrieval" sentence (a check time) is replaced by when the catalog last changed, and
+ * the standalone's "fixed snapshot" sentence by the master-era embedded-snapshot note.
+ */
+export function loadedNotice(
+  catalog: Catalog,
+  status: SyncStatus | null,
+  usingEmbeddedSnapshot: boolean,
+): Warning {
+  const m = catalog.meta;
+  const missing = m.audit?.missing_formulation_products;
+  return {
+    title: 'EPA workbook loaded',
+    message:
+      `${catalog.products.length.toLocaleString()} active registrations from the supplied export, created ${fmt(m.source_snapshot_date)}. Imported ${fmt(importedAt(catalog))}. ` +
+      `Catalog last changed ${fmt(catalogLastChanged(catalog, status))}. ` +
+      (usingEmbeddedSnapshot ? 'This file is showing its embedded snapshot. ' : '') +
+      (missing ? missing + ' records lack ingredients and need an exclusion check.' : ''),
+  };
+}
+
+/** The hero's data line (`#hero-mode`). Deviation: "EPA data as of" replaces "EPA workbook created". */
+export function heroModeText(
+  loadState: 'loading' | 'ready' | 'unavailable',
+  catalog: Catalog,
+): string {
+  return loadState === 'loading'
+    ? 'Connecting to catalog…'
+    : loadState === 'unavailable'
+      ? 'Live data not connected'
+      : 'EPA data as of ' + fmt(epaDataAsOf(catalog));
 }
 
 export function aboutDatesText(catalog: Catalog, status: SyncStatus | null): string {

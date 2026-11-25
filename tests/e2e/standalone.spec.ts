@@ -56,9 +56,18 @@ test('is one self-contained file', async ({ page }) => {
   expect(await page.locator('.brand-logo').evaluate((e) => (e as HTMLImageElement).src)).toMatch(
     /^data:image\/png/,
   );
+  // Roboto Condensed is inlined too.
   expect(
-    await page.locator('.seed-photo img').evaluate((e) => (e as HTMLImageElement).naturalWidth),
-  ).toBeGreaterThan(0);
+    await page.evaluate(() =>
+      [...document.styleSheets].some((sheet) =>
+        [...sheet.cssRules].some(
+          (r) =>
+            r instanceof CSSFontFaceRule &&
+            r.style.getPropertyValue('src').includes('data:font/ttf'),
+        ),
+      ),
+    ),
+  ).toBe(true);
   // Only the published-data poll leaves the file.
   expect(external.every((url) => url.startsWith(PUBLISHED))).toBe(true);
 });
@@ -70,10 +79,9 @@ test('offline: shows the embedded snapshot and says so', async ({ page }) => {
   await page.locator('.product').first().waitFor();
   await expect(page.locator('#notice')).toContainText('Offline snapshot displayed.');
   await expect(page.locator('#count')).toHaveText(/^\d+ products$/);
-  await page.locator('#tab-resources').click();
-  await page.locator('#source-guide > summary').click();
+  await page.locator('#tab-data').click();
   await expect(page.locator('#data')).toContainText('Embedded snapshot; online checks enabled');
-  await page.locator('#guide-references > summary').click();
+  await page.locator('#tab-guide').click();
   expect(await page.locator('#guide .guide-action').getAttribute('href')).toMatch(
     /^data:application\/pdf;base64,/,
   );
@@ -95,7 +103,7 @@ test('online: loads the published catalog, survives an outage, recovers', async 
   const id = catalog.products[0].id;
   await page.locator('#query').fill(id);
   await expect(page.locator('.product').first()).toContainText('Browser online refresh fixture');
-  await expect(page.locator('#notice')).toContainText('Data note:');
+  await expect(page.locator('#notice')).toContainText('EPA workbook loaded');
   await expect(page.locator('#notice')).not.toContainText('embedded snapshot');
   await page.locator(`[data-select="${id}"]`).check();
   for (const file of ['catalog.json', 'sync-status.json', 'update-history.json'])
@@ -113,9 +121,8 @@ test('online: loads the published catalog, survives an outage, recovers', async 
   remote.available = true;
   remote.status = { ...status, message: 'Browser recovered status fixture.' };
   await page.clock.runFor(FIVE_MINUTES);
-  await expect(page.locator('#notice')).toContainText('Data note:');
-  await page.locator('#tab-resources').click();
-  await page.locator('#source-guide > summary').click();
+  await expect(page.locator('#notice')).toContainText('EPA workbook loaded');
+  await page.locator('#tab-data').click();
   await expect(page.locator('#data')).toContainText('Browser recovered status fixture.');
   await expect(page.locator('#data')).toContainText('Online catalog; checks every five minutes');
 

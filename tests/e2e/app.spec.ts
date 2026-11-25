@@ -1,4 +1,5 @@
-// Browser behaviour of the Pages build, ported from legacy/tests/ui_test.cjs.
+// Browser behaviour of the Pages build, ported from the legacy ui_test.cjs (the Oct 19
+// version, upstream 435c0bf, and the later one in legacy/tests/).
 // Uses the frozen 2026-10-19 fixture and clock so counts stay stable.
 
 import { expect, test, type Page } from '@playwright/test';
@@ -51,16 +52,17 @@ test.describe('products', () => {
     await expect(page.locator('#tab-matrix')).toBeFocused();
     await expect(page.locator('#tab-matrix')).toHaveAttribute('aria-selected', 'true');
     await page.keyboard.press('End');
-    await expect(page.locator('#tab-resources')).toBeFocused();
+    await expect(page.locator('#tab-data')).toBeFocused();
     await page.keyboard.press('Home');
     await expect(page.locator('#tab-products')).toBeFocused();
-    await expect(page.locator('[role="tab"]')).toHaveCount(3);
+    await expect(page.locator('[role="tab"]')).toHaveCount(5);
   });
 
   test('filters: exact crop, technology, provenance, signal words, restricted use', async ({
     page,
   }) => {
-    await expect(page.locator('#filters')).toBeHidden();
+    await expect(page.locator('#filters')).toBeVisible();
+    await expect(page.locator('#filters details[open]')).toHaveCount(0);
     await page.locator('.site-picker summary').click();
     await page.getByRole('checkbox', { name: 'Barley (seed treatment)', exact: true }).check();
     await expect(page.locator('#count')).toHaveText('299 products');
@@ -68,8 +70,6 @@ test.describe('products', () => {
     await expect(page.locator('#applied')).toHaveText('Barley');
     await page.locator('#reset').click();
     await expect(page.locator('#count')).toHaveText('880 products');
-    await page.locator('#mobile-filter').click();
-    await expect(page.locator('#filters')).toBeVisible();
     await page.locator('#technology').selectOption('Plant-Incorp. Protectant');
     await expect(page.locator('#count')).toHaveText('85 products');
     await page.locator('#reset').click();
@@ -85,11 +85,19 @@ test.describe('products', () => {
     await page.locator('#reset').click();
     await page.locator('#rup').selectOption('yes');
     await expect(page.locator('#count')).toHaveText('19 products');
-    await expect(page.locator('#state, #state-status, #matrix-state')).toHaveCount(0);
+    // Oct 19 cards show a restricted-use badge only when the flag is Yes.
+    await expect(page.locator('.product').first().locator('.safety-badge.warning')).toHaveText(
+      'Restricted-use flag: Yes',
+    );
+    await page.locator('#rup').selectOption('no');
+    await expect(page.locator('.product .safety-badge', { hasText: 'Restricted-use' })).toHaveCount(
+      0,
+    );
+    // User decision: no state registration UI.
+    await expect(page.locator('#state, #state-status, #state-help, #matrix-state')).toHaveCount(0);
   });
 
   test('date range validation', async ({ page }) => {
-    await page.locator('#mobile-filter').click();
     await page.getByText('Registration status & dates', { exact: true }).click();
     await expect(page.locator('#end')).toHaveValue('2026-10-19');
     await page.locator('#start').fill('2099-01-01');
@@ -142,7 +150,6 @@ test.describe('products', () => {
 
   test('exports: label links (filtered and all) and results CSV', async ({ page }) => {
     await page.locator('#query').fill('5905-491-38167');
-    await page.locator('.downloads > summary').click();
     await expect(page.locator('#export')).toHaveText('Export results');
     await expect(page.locator('#export-labels')).toHaveText('Export label links');
     const filtered = await downloadText(page, () => page.locator('#export-labels').click());
@@ -210,7 +217,6 @@ test.describe('comparison', () => {
     }
     await expect(page.locator('#comparebar')).toBeVisible();
     await expect(page.locator('#selected-count')).toHaveText('2 of 4 products selected');
-    await expect(page.locator('#nav-selected-count')).toHaveText('(2)');
     await page.locator('#compare').click();
     await expect(page.locator('#matrix-title')).toBeFocused();
     await expect(page.locator('#comparebar')).toBeHidden();
@@ -302,106 +308,84 @@ test.describe('comparison', () => {
     await page.locator('[data-select="100-1508"]').check();
     await page.reload();
     await page.locator('.product').first().waitFor();
-    await expect(page.locator('#nav-selected-count')).toHaveText('(1)');
     await expect(page.locator('#selected-names')).toHaveText('Cruisermaxx Vibrance');
   });
 });
 
-test.describe('guides & sources', () => {
+test.describe('guides and sources', () => {
   test.beforeEach(async ({ page }) => open(page));
 
-  test('guides, ingredient search, print and disclaimer', async ({ page }) => {
-    await page.locator('#about-tool > summary').click();
-    await expect(page.locator('#tool-citation')).toContainText('Catalog imported Oct 19, 2026');
-    await page.locator('#about-tool > summary').click();
-    await page.locator('#tab-resources').click();
-    await page.locator('#seed-abbreviations > summary').click();
-    await expect(page.locator('.abbreviation-list dt')).toHaveCount(23);
-    await page.locator('#warning-guide > summary').click();
-    for (const term of ['DANGER', 'WARNING', 'CAUTION', 'Not supplied'])
-      await expect(page.locator('#warning-guide')).toContainText(term);
-    await page.locator('#handling-guide > summary').click();
-    await expect(page.locator('#handling-guide')).toContainText('Keep treated seed out of food');
-    await page.locator('#ingredient-guide > summary').click();
+  test('hero shortcuts focus the product and ingredient searches', async ({ page }) => {
+    await expect(page.locator('.hero-art')).toHaveCount(0);
+    await page.locator('[data-start="ingredients"]').click();
+    await expect(page.locator('#tab-ingredients')).toHaveAttribute('aria-selected', 'true');
+    await expect(page.locator('#ingredient-search')).toBeFocused();
+    await page.locator('[data-start="products"]').click();
+    await expect(page.locator('#query')).toBeFocused();
+  });
+
+  test('ingredient guide search', async ({ page }) => {
+    await page.locator('#tab-ingredients').click();
+    await expect(page.locator('#ingredient-count')).toHaveText(/^\d+ ingredients$/);
     await page.locator('#ingredient-search').fill('metalaxyl');
     expect(await page.locator('#ingredient-grid .ingredient-card').count()).toBeGreaterThan(0);
-    await expect(page.locator('#guide')).toContainText('Best management practices');
-    await expect(page.locator('#guide')).toContainText('FRAC Code List 2026');
-
-    await page.emulateMedia({ media: 'print' });
-    const printCheck = await page.evaluate(() => {
-      let ok = false;
-      window.print = () => {
-        ok =
-          [...document.querySelectorAll('#resources details')].every(
-            (x) => (x as HTMLDetailsElement).open,
-          ) &&
-          (document.getElementById('tool-disclaimer') as HTMLDetailsElement).open &&
-          ['ingredient-grid', 'data-grid'].every(
-            (id) => getComputedStyle(document.getElementById(id)!).display !== 'none',
-          );
-      };
-      (document.getElementById('print-resources') as HTMLButtonElement).click();
-      return ok;
-    });
-    expect(printCheck).toBe(true);
-    await page.emulateMedia({ media: 'screen' });
-    expect(
-      await page.locator('#source-guide').evaluate((e) => (e as HTMLDetailsElement).open),
-    ).toBe(false);
-    expect(
-      await page.locator('#tool-disclaimer').evaluate((e) => (e as HTMLDetailsElement).open),
-    ).toBe(false);
-    await page.locator('#tool-disclaimer > summary').click();
-    await expect(page.locator('#tool-disclaimer')).toContainText('pending CPN legal review');
+    await expect(page.locator('#a11y-status')).toContainText('found.');
+    await page.locator('#ingredient-grid [data-ingredient]').first().click();
+    await expect(page.locator('#dialog-body')).toContainText('catalog product');
   });
 
-  test('guide links jump to sections', async ({ page }) => {
-    await page.locator('#tab-resources').click();
-    await page.locator('#treatment-guide > summary').click();
-    await page.locator('[data-tab="ingredients"]').click();
-    await expect(page.locator('#ingredient-guide')).toHaveAttribute('open', '');
-    await expect(page.locator('#ingredient-guide > summary')).toBeFocused();
-  });
-
-  test('fact sheet PDF download', async ({ page }) => {
-    await page.locator('#tab-resources').click();
-    await page.locator('#guide-references > summary').click();
+  test('treatment guide, its links and the fact sheet', async ({ page }) => {
+    await page.locator('#tab-guide').click();
+    for (const text of ['Best management practices', 'FRAC Code List 2026', 'EPA signal words'])
+      await expect(page.locator('#guide')).toContainText(text);
+    for (const term of ['DANGER', 'WARNING', 'CAUTION', 'Not supplied'])
+      await expect(page.locator('#guide')).toContainText(term);
+    await expect(page.locator('#guide')).toContainText('Keep treated seed out of food');
     const download = page.waitForEvent('download');
     await page.locator('#guide .guide-action').click();
     const path = await (await download).path();
     expect(readFileSync(path!).subarray(0, 4).toString()).toBe('%PDF');
+    await page.locator('#guide [data-tab="ingredients"]').click();
+    await expect(page.locator('#tab-ingredients')).toBeFocused();
+    await expect(page.locator('#ingredients')).toBeVisible();
+  });
+
+  test('the dialog links to the treatment guide', async ({ page }) => {
+    await page.locator('#query').fill('100-1508');
+    await page.locator('.product-name').click();
+    await page.locator('#dialog-body [data-tab="guide"]').click();
+    await expect(page.locator('#dialog')).toBeHidden();
+    await expect(page.locator('#guide')).toBeVisible();
+    await expect(page.locator('#tab-guide')).toBeFocused();
   });
 
   test('data currency: EPA data date, last change and update history (no check time)', async ({
     page,
   }) => {
-    await expect(page.locator('#catalog-summary')).toContainText('EPA data as of: Sep 21, 2026');
-    await expect(page.locator('#catalog-summary')).toContainText('Catalog last changed:');
-    await page.locator('#tab-resources').click();
-    await page.locator('#source-guide > summary').click();
-    const panel = page.locator('#data-grid > article').first();
-    await expect(panel.locator('h3')).toHaveText('Data currency & update history');
-    expect(await panel.locator('tbody tr').count()).toBeGreaterThan(0);
+    await expect(page.locator('#hero-mode')).toHaveText('EPA data as of Sep 21, 2026');
+    await expect(page.locator('#notice')).toContainText('EPA workbook loaded');
+    await expect(page.locator('#notice')).toContainText('Catalog last changed');
+    await expect(page.locator('#notice')).not.toContainText('retrieval');
+    await page.locator('#tab-data').click();
+    const panels = page.locator('#data-grid > article');
+    await expect(panels.nth(1).locator('h3')).toHaveText('Data currency & update history');
+    expect(await panels.nth(1).locator('tbody tr').count()).toBeGreaterThan(0);
+    await expect(panels.nth(1)).toContainText('weekly, on Mondays at 6:30 a.m.');
     await expect(page.locator('#data')).not.toContainText('Latest official retrieval');
-    await expect(page.locator('#data')).not.toContainText('48 hours');
-    await expect(page.locator('#notice')).toContainText('Data note:');
+    await expect(page.locator('#data')).not.toContainText('daily');
+    await expect(page.locator('#data')).not.toContainText('State registration');
   });
 
-  test('seed photograph and credit', async ({ page }) => {
-    expect(
-      await page
-        .locator('.seed-photo img')
-        .evaluate(
-          (e) =>
-            (e as HTMLImageElement).complete &&
-            (e as HTMLImageElement).naturalWidth > 0 &&
-            (e as HTMLImageElement).alt.includes('treated corn'),
-        ),
-    ).toBe(true);
-    await expect(page.locator('.seed-photo figcaption')).toContainText(
-      'Adam Sisson, Iowa State University',
+  test('about, citation and draft disclaimer (brought forward)', async ({ page }) => {
+    await page.locator('#tab-data').click();
+    await expect(page.locator('#data-grid > article').first().locator('h3')).toHaveText(
+      'About this tool and how to use it',
     );
+    await expect(page.locator('#tool-citation')).toContainText('Catalog imported Oct 19, 2026');
+    await expect(page.locator('#tool-citation')).toContainText('bzbradford/whats-on-your-seed-v2');
+    await expect(page.locator('footer.disclaimer')).toContainText('Educational reference only.');
+    await page.locator('#tool-disclaimer > summary').click();
+    await expect(page.locator('#tool-disclaimer')).toContainText('pending CPN legal review');
   });
 });
 
@@ -413,9 +397,10 @@ test.describe('mobile', () => {
     expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(
       false,
     );
+    await expect(page.locator('#filters')).toBeHidden();
     await page.locator('#mobile-filter').click();
     await expect(page.locator('#filters')).toBeVisible();
-    await expect(page.locator('#mobile-filter')).toHaveText('Hide more filters');
+    await expect(page.locator('#mobile-filter')).toHaveText('Hide filters');
     expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(
       false,
     );
@@ -426,7 +411,6 @@ test.describe('mobile', () => {
     await page.locator('#mobile-filter').click();
     await page.locator('#apply-filters').click();
     await expect(page.locator('#count')).toBeFocused();
-    await page.locator('.downloads > summary').click();
     await expect(page.locator('#export')).toBeVisible();
     await expect(page.locator('#export-labels')).toBeVisible();
     await expect(page.locator('.crop-text').first()).toBeVisible();
@@ -449,10 +433,10 @@ test.describe('mobile', () => {
 });
 
 test.describe('embedding', () => {
-  test('?embed hides the page header and intro', async ({ page }) => {
+  test('?embed hides the page header and hero', async ({ page }) => {
     await open(page, './?embed');
     await expect(page.locator('header')).toBeHidden();
-    await expect(page.locator('.intro')).toBeHidden();
+    await expect(page.locator('.hero')).toBeHidden();
     await expect(page.locator('#count')).toHaveText('880 products');
   });
 

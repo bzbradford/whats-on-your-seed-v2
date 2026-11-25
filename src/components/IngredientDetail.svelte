@@ -4,13 +4,14 @@
   import { productsWithIngredient, quality } from '../lib/product-facts';
   import type { IngredientReference } from '../lib/types';
   import ExtLink from './ExtLink.svelte';
+  import PurposeBadge from './PurposeBadge.svelte';
 
   let { a }: { a: IngredientReference } = $props();
   const app = getApp();
   const ps = $derived(productsWithIngredient(app.catalog.products, a.name));
 </script>
 
-<div><span class="purpose-badge">{a.purpose}</span> <span class="chip">{a.group}</span></div>
+<div><PurposeBadge purpose={a.purpose} /> <span class="chip">{a.group}</span></div>
 <h3>{a.classification}</h3>
 <p>{a.explanation}</p>
 <p class="small muted">

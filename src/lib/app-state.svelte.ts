@@ -27,17 +27,11 @@ import {
 import { carryOver, catalogChanged, fetchPublished } from './sync';
 import type { Catalog, SyncStatus, UpdateHistory } from './types';
 
-export type View = 'products' | 'matrix' | 'resources';
+/** The five tabs of the Oct 19 reference. */
+export const VIEWS = ['products', 'matrix', 'ingredients', 'guide', 'data'] as const;
+export type View = (typeof VIEWS)[number];
 export type DialogContent =
   { kind: 'product'; id: string } | { kind: 'ingredient'; name: string } | null;
-
-/** Tab ids that open a section of Guides & sources instead of a tab. */
-const DESTINATIONS: Record<string, string> = {
-  ingredients: 'ingredient-guide',
-  guide: 'treatment-guide',
-  data: 'source-guide',
-  abbreviations: 'seed-abbreviations',
-};
 
 const EMPTY_CATALOG = {
   mode: 'loading',
@@ -105,7 +99,7 @@ export class AppState {
 
   // ---- loading and refresh -------------------------------------------------
 
-  async start(): Promise<void> {
+  async load(): Promise<void> {
     const embedded = await loadEmbedded();
     if (embedded) {
       this.flags.usingEmbeddedSnapshot = true;
@@ -178,14 +172,9 @@ export class AppState {
     this.#pageState = { key: this.#pageKey, page: n };
   }
 
-  /** Re-run the search (the Search button): returns to page 1. */
-  research(): void {
-    this.#pageState = { key: '', page: 1 };
-  }
-
   reset(): void {
     this.filters = resetFilters(this.filters, this.catalog);
-    this.research();
+    this.#pageState = { key: '', page: 1 };
   }
 
   // ---- comparison ----------------------------------------------------------
@@ -216,30 +205,19 @@ export class AppState {
 
   // ---- navigation, dialog, toast -------------------------------------------
 
-  /** Switch tab, or open a Guides & sources section (legacy `tabs`). */
+  /** Switch tab (legacy `tabs`); the ingredient guide announces its count on arrival. */
   async goTo(id: string, moveFocus = false): Promise<void> {
-    const destination = DESTINATIONS[id];
-    const next = (destination ? 'resources' : id) as View;
-    if (!['products', 'matrix', 'resources'].includes(next)) return;
+    if (!(VIEWS as readonly string[]).includes(id)) return;
     if (this.dialog) this.closeDialog(false);
-    this.view = next;
+    this.view = id as View;
     await tick();
-    if (destination) {
-      const section = document.getElementById(destination) as HTMLDetailsElement | null;
-      if (section) {
-        section.open = true;
-        if (moveFocus) section.querySelector('summary')?.focus();
-      }
-    } else if (moveFocus) focusById('tab-' + next);
+    if (moveFocus) focusById('tab-' + id);
   }
 
-  /** Open a Guides & sources disclosure and focus it. */
-  async openResource(id: string): Promise<void> {
-    await this.goTo('resources');
-    const section = document.getElementById(id) as HTMLDetailsElement | null;
-    if (!section) return;
-    section.open = true;
-    section.querySelector('summary')?.focus();
+  /** Hero shortcuts: open a tab and focus its search box. */
+  async start(id: 'products' | 'ingredients'): Promise<void> {
+    await this.goTo(id);
+    focusById(id === 'products' ? 'query' : 'ingredient-search');
   }
 
   async compare(): Promise<void> {

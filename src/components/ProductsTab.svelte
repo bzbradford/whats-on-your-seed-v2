@@ -5,7 +5,7 @@
   import { downloadCsv, exportFileNames, labelLinksCsv, resultsCsv } from '../lib/csv';
   import { DATE_ERROR, appliedFilters, siteSummary } from '../lib/filters';
   import { localDate } from '../lib/format';
-  import { printCurrentView } from '../lib/print';
+  import Icon from './Icon.svelte';
   import ProductCard from './ProductCard.svelte';
 
   const app = getApp();
@@ -65,7 +65,8 @@
   }
 
   function onFiltersKeydown(event: KeyboardEvent) {
-    if (event.key === 'Escape' && app.filtersOpen) {
+    // Oct 19: Escape closes the filter drawer only at mobile widths, where it is a drawer.
+    if (event.key === 'Escape' && matchMedia('(max-width:700px)').matches && app.filtersOpen) {
       event.preventDefault();
       setFiltersOpen(false);
     }
@@ -108,86 +109,86 @@
   aria-labelledby="tab-products"
   hidden={app.view !== 'products'}
 >
-  <p class="search-instruction">
-    Search or choose a crop. Select Compare beside a product to review up to four side by side.
-  </p>
-  <form
-    class="product-search"
-    id="product-search"
-    onsubmit={(event) => {
-      event.preventDefault();
-      app.research();
-    }}
-  >
-    <div class="search">
-      <label for="query">Search products and ingredients</label><input
-        id="query"
-        type="search"
-        placeholder="Search a product, active ingredient, or EPA number…"
-        bind:value={app.filters.query}
-      />
-    </div>
-    <button class="solid" type="submit">Search</button>
-  </form>
-  <div class="quick-filters">
-    <div class="field">
-      <span id="crop-label">Crop / EPA site</span>
-      <details class="site-picker">
-        <summary id="site-summary" aria-describedby="crop-label">
-          {siteSummary(app.filters.sites)}
-        </summary>
-        <div class="site-options" id="site-options" role="group" aria-labelledby="crop-label">
-          {#each app.catalog.scope.sites as site (site)}
-            <label class="check">
-              <input
-                type="checkbox"
-                value={site}
-                checked={app.filters.sites.includes(site)}
-                onchange={onSiteChange}
-              /><span>{site}</span>
-            </label>
-          {/each}
-        </div>
-      </details>
-    </div>
-    <label class="field">
-      <span>EPA product purpose</span><select id="purpose" bind:value={app.filters.purpose}>
-        <option value="">All purposes</option>
-        {#if ready}
-          {#each app.options.purpose as x (x)}<option>{x}</option>{/each}
-        {:else}
-          <option>Fungicide</option><option>Insecticide</option><option>Nematicide</option><option>
-            Biological
-          </option><option>Unclassified</option>
-        {/if}
-      </select>
-    </label>
-    <button
-      id="mobile-filter"
-      class="mobile-filters"
-      aria-expanded={app.filtersOpen}
-      aria-controls="filters"
-      onclick={() => setFiltersOpen(!app.filtersOpen)}
-    >
-      {app.filtersOpen ? 'Hide more filters' : 'More filters'}
-    </button>
+  <div class="section-intro">
+    <h2>Explore seed treatments</h2>
+    <p>
+      Start with a product name or a crop. Select <strong>Compare</strong> on any card to build your side-by-side
+      view.
+    </p>
   </div>
-  <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-  <aside
-    class="filter {app.filtersOpen ? 'open' : ''}"
-    id="filters"
-    aria-label="Additional product filters"
-    bind:this={filtersEl}
-    onkeydown={onFiltersKeydown}
+  <button
+    id="mobile-filter"
+    class="mobile-filters"
+    aria-expanded={app.filtersOpen}
+    aria-controls="filters"
+    onclick={() => setFiltersOpen(!app.filtersOpen)}
   >
-    <h2 id="filter-title" tabindex="-1">More filters</h2>
-    <div class="advanced-fields">
-      <label class="field">
-        <span>Technology type</span><select id="technology" bind:value={app.filters.technology}>
-          <option value="">All technologies</option>
-          {#each app.options.technology as x (x)}<option>{x}</option>{/each}
-        </select>
-      </label>
+    {app.filtersOpen ? 'Hide filters' : 'Show filters'}
+  </button>
+  <div class="workspace">
+    <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+    <aside
+      class="filter {app.filtersOpen ? 'open' : ''}"
+      id="filters"
+      aria-label="Product filters"
+      bind:this={filtersEl}
+      onkeydown={onFiltersKeydown}
+    >
+      <div class="filter-title">
+        <h2 id="filter-title" tabindex="-1">Refine your search</h2>
+        <button
+          class="quiet small"
+          id="reset"
+          aria-label="Reset all product filters and search"
+          onclick={() => app.reset()}
+        >
+          Reset
+        </button>
+      </div>
+      <!-- Deviation (user decision): no state registration filter (legacy details.state-filters). -->
+      <fieldset class="filter-group">
+        <legend>Crop &amp; location</legend>
+        <div class="field">
+          <span id="crop-label">Crop / EPA site</span>
+          <details class="site-picker">
+            <summary id="site-summary" aria-describedby="crop-label">
+              {siteSummary(app.filters.sites)}
+            </summary>
+            <div class="site-options" id="site-options" role="group" aria-labelledby="crop-label">
+              {#each app.catalog.scope.sites as site (site)}
+                <label class="check">
+                  <input
+                    type="checkbox"
+                    value={site}
+                    checked={app.filters.sites.includes(site)}
+                    onchange={onSiteChange}
+                  /><span>{site}</span>
+                </label>
+              {/each}
+            </div>
+          </details>
+        </div>
+      </fieldset>
+      <fieldset class="filter-group">
+        <legend>Treatment purpose</legend>
+        <label class="field">
+          <span>EPA product purpose</span><select id="purpose" bind:value={app.filters.purpose}>
+            <option value="">All purposes</option>
+            {#if ready}
+              {#each app.options.purpose as x (x)}<option>{x}</option>{/each}
+            {:else}
+              <option>Fungicide</option><option>Insecticide</option><option>
+                Nematicide
+              </option><option>Biological</option><option>Unclassified</option>
+            {/if}
+          </select>
+        </label><label class="field">
+          <span>Technology type</span><select id="technology" bind:value={app.filters.technology}>
+            <option value="">All technologies</option>
+            {#each app.options.technology as x (x)}<option>{x}</option>{/each}
+          </select>
+        </label>
+      </fieldset>
       <details>
         <summary>Groups &amp; EPA hazards</summary>
         <label class="field">
@@ -265,7 +266,7 @@
         </label>
         <p class="small muted" id="date-help">
           {ready
-            ? 'Uses EPA status dates. Blank start; end is the import cutoff. Changing this filter does not retrieve newer records.'
+            ? 'Uses EPA STATUS_DT. Blank start; end is the import cutoff. Changing this filter does not retrieve newer EPA records.'
             : 'Start is blank; end defaults to today. Uses EPA status dates.'}
         </p>
         <p id="date-error" class="field-error" hidden={!app.result.invalidDates}>
@@ -276,130 +277,121 @@
         <strong>Seed treatment only.</strong> Grain-storage-only products and all deltamethrin products
         are excluded. Crop groups are not expanded into unverified uses.
       </div>
-    </div>
-    <button
-      id="apply-filters"
-      class="solid mobile-filters"
-      onclick={() => {
-        app.filtersOpen = false;
-        focusById('count');
-      }}
-    >
-      Show results
-    </button>
-  </aside>
-  <div class="reset-row">
-    <button
-      class="text-action"
-      id="reset"
-      aria-label="Reset all product filters and search"
-      onclick={() => app.reset()}
-    >
-      Clear filters
-    </button>
-  </div>
-  <div class="results-tools">
-    <div class="result-heading">
-      <h3 id="count" tabindex="-1">
-        {app.loadState === 'unavailable' ? 'No live catalog' : ready ? app.count : ''}
-      </h3>
-      <label class="small muted">
-        Sort <select id="sort" aria-label="Sort products" bind:value={app.filters.sort}>
-          <option value="name">Product name A–Z</option><option value="updated">
-            Status date, newest
-          </option>
-        </select>
-      </label>
-    </div>
-    <details class="downloads">
-      <summary>Download &amp; print</summary>
-      <div class="download-actions">
-        <button id="export" class="text-action" disabled={ready && !n} onclick={exportResults}>
-          Export results
+      <button
+        id="apply-filters"
+        class="solid mobile-filters"
+        onclick={() => {
+          app.filtersOpen = false;
+          focusById('count');
+        }}
+      >
+        Show results
+      </button>
+    </aside>
+    <div>
+      <div class="toolbar">
+        <div class="search">
+          <label for="query">Search products and ingredients</label><span aria-hidden="true">
+            <Icon name="search" />
+          </span><input
+            id="query"
+            type="search"
+            placeholder="Search a product, active ingredient, or EPA number…"
+            bind:value={app.filters.query}
+          />
+        </div>
+        <button id="export" class="export" disabled={ready && !n} onclick={exportResults}>
+          <Icon name="download" />Export results
         </button><button
           id="export-labels"
-          class="text-action"
+          class="export"
           aria-describedby="label-help"
           disabled={ready && !n}
           onclick={exportLabels}
         >
-          Export label links
-        </button><button
-          type="button"
-          class="text-action"
-          id="print-results"
-          onclick={() => printCurrentView(app.view)}
-        >
-          Print this view
+          <Icon name="download" />Export label links
         </button>
-        <p id="label-help" class="small muted label-help">
-          Open a label PDF and use its download / save control. <strong>Export label links</strong> saves
-          a CSV for all matching products across every page; reset filters to include the full catalog.
-          PDF documents require an internet connection.
-        </p>
       </div>
-    </details>
-  </div>
-  <div id="applied" class="applied" role="group" aria-label="Applied product filters">
-    {#if ready && !app.result.invalidDates}
-      {#each appliedFilters(app.filters) as chip, i (i)}<span class="chip">{chip}</span>{/each}
-    {/if}
-  </div>
-  <div id="results" role="region" aria-labelledby="count" bind:this={resultsEl}>
-    {#if app.loadState === 'unavailable'}
-      <div class="empty">
-        <h3>Source connection required</h3>
-        <p class="muted">Connect and validate the EPA source to publish the catalog.</p>
+      <p id="label-help" class="small muted label-help">
+        Open a label PDF and use its download / save control. <strong>Export label links</strong> saves
+        a CSV for all matching products across every page; reset filters to include the full catalog.
+        PDF documents require an internet connection.
+      </p>
+      <div class="result-heading">
+        <h3 id="count" tabindex="-1">
+          {app.loadState === 'unavailable' ? 'No live catalog' : ready ? app.count : ''}
+        </h3>
+        <label class="small muted">
+          Sort <select id="sort" aria-label="Sort products" bind:value={app.filters.sort}>
+            <option value="name">Product name A–Z</option><option value="updated">
+              Status date, newest
+            </option>
+          </select>
+        </label>
       </div>
-    {:else if !ready}
-      <!-- loading -->
-    {:else if app.result.invalidDates}
-      <div class="empty">
-        <h3>Start date is after end date.</h3>
-        <p>Choose a valid status-date range.</p>
+      <div id="applied" class="applied" role="group" aria-label="Applied product filters">
+        {#if ready && !app.result.invalidDates}
+          {#each appliedFilters(app.filters) as chip, i (i)}<span class="chip">{chip}</span>{/each}
+        {/if}
       </div>
-    {:else}
-      {#each app.pageProducts as p (p.id)}
-        <ProductCard product={p} />
-      {:else}
-        <div class="empty">
-          <h3>No matching products.</h3>
-          <p class="muted">Try a broader search or reset your filters.</p>
-          <button
-            data-reset
-            onclick={() => {
-              app.reset();
-              focusById('query');
-            }}
-          >
-            Reset filters
-          </button>
-          <p class="small muted">
-            An empty result does not prove a product is unavailable or unregistered. Check the
-            current label and relevant state authority before use.
-          </p>
-        </div>
-      {/each}
-    {/if}
+      <div id="results" role="region" aria-labelledby="count" bind:this={resultsEl}>
+        {#if app.loadState === 'unavailable'}
+          <div class="empty">
+            <h3>Source connection required</h3>
+            <p class="muted">Connect and validate the EPA source to publish the catalog.</p>
+          </div>
+        {:else if !ready}
+          <!-- loading -->
+        {:else if app.result.invalidDates}
+          <div class="empty">
+            <h3>Start date is after end date.</h3>
+            <p>Choose a valid status-date range.</p>
+          </div>
+        {:else}
+          {#each app.pageProducts as p (p.id)}
+            <ProductCard product={p} />
+          {:else}
+            <div class="empty">
+              <h3>No matching products.</h3>
+              <p class="muted">Try a broader search or reset your filters.</p>
+              <button
+                data-reset
+                onclick={() => {
+                  app.reset();
+                  focusById('query');
+                }}
+              >
+                Reset filters
+              </button>
+              <!-- Deviation: Oct 19 also pointed at the state-evidence filter, which isn't ported. -->
+              <p class="small muted">
+                An empty result does not prove a product is unavailable or unregistered. Check the
+                current label and relevant state authority before use.
+              </p>
+            </div>
+          {/each}
+        {/if}
+      </div>
+      <nav
+        id="pager"
+        class="pager"
+        aria-label="Product result pages"
+        hidden={ready && (app.result.invalidDates || !n)}
+      >
+        <button
+          id="page-prev"
+          disabled={ready && app.pageInfo.page <= 1}
+          onclick={() => goToPage(Math.max(1, app.page - 1))}
+        >
+          ← Previous
+        </button><span id="page-label">{ready ? app.pageInfo.label : ''}</span><button
+          id="page-next"
+          disabled={ready && app.pageInfo.page >= app.pageInfo.pages}
+          onclick={() => goToPage(app.page + 1)}
+        >
+          Next →
+        </button>
+      </nav>
+    </div>
   </div>
-  <nav
-    id="pager"
-    class="pager"
-    aria-label="Product result pages"
-    hidden={ready && (app.result.invalidDates || !n)}
-  >
-    <button
-      id="page-prev"
-      disabled={ready && app.pageInfo.page <= 1}
-      onclick={() => goToPage(Math.max(1, app.page - 1))}
-    >
-      ← Previous
-    </button><span id="page-label">{ready ? app.pageInfo.label : ''}</span><button
-      id="page-next"
-      disabled={ready && app.pageInfo.page >= app.pageInfo.pages}
-      onclick={() => goToPage(app.page + 1)}
-    >
-      Next →
-    </button>
-  </nav>
 </section>

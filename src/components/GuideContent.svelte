@@ -1,26 +1,25 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
-  import { factSheetUrl } from '../lib/assets';
   import { getApp } from '../lib/context';
   import { fmt } from '../lib/format';
   import ExtLink from './ExtLink.svelte';
+  import Icon from './Icon.svelte';
   import SourceLinks from './SourceLinks.svelte';
 
+  // Oct 19 renderGuide(): the treatment guide as a grid of panels.
   const app = getApp();
   const e = $derived(app.catalog.education);
-  let pdfUrl = $state('');
-  onMount(async () => {
-    pdfUrl = await factSheetUrl();
-  });
 </script>
 
 {#if !e}
   <p>The treatment guide is unavailable in this catalog.</p>
 {:else}
-  <details class="resource-block" id="treatment-guide">
-    <summary>Treatment types &amp; resistance groups</summary>
-    <div class="resource-copy">
-      <p class="small muted">{e.status} · Reviewed {fmt(e.reviewed_on)}.</p>
+  <div class="guide-grid">
+    <article class="panel full">
+      <h3>Treatment types at a glance</h3>
+      <p>
+        {e.status} · Reviewed {fmt(e.reviewed_on)}. Match the product to a diagnosed or anticipated
+        pest; this is not an efficacy ranking.
+      </p>
       <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
       <div
         class="table-scroll"
@@ -51,25 +50,24 @@
         </table>
       </div>
       <p>{e.technology_note}</p>
+    </article>
+    <article class="panel">
       <h3>FRAC &amp; IRAC groups</h3>
       <p>{e.classification_note}</p>
       <p>{e.resistance_note}</p>
       <p><SourceLinks ids={['FRAC', 'IRAC']} sources={e.sources} /></p>
-      <button
-        class="text-action"
-        data-tab="ingredients"
-        onclick={() => app.goTo('ingredients', true)}
-      >
-        Explore ingredient groups
+      <button data-tab="ingredients" onclick={() => app.goTo('ingredients', true)}>
+        <Icon name="flask" />Explore ingredient groups →
       </button>
-    </div>
-  </details>
-  <details class="resource-block" id="warning-guide">
-    <summary>EPA signal words &amp; treatment warnings</summary>
-    <div class="resource-copy">
+    </article>
+    <article class="panel">
       <h3>How to read product warnings</h3>
       <p>{e.signal_note}</p>
       <p>{e.data_note}</p>
+      <p><SourceLinks ids={['EPA-SIGNAL', 'EPA-LABEL']} sources={e.sources} /></p>
+    </article>
+    <article class="panel full">
+      <h3>EPA signal words</h3>
       <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
       <div
         class="table-scroll"
@@ -93,19 +91,9 @@
           </tbody>
         </table>
       </div>
-      <p><SourceLinks ids={['EPA-SIGNAL', 'EPA-LABEL']} sources={e.sources} /></p>
-      <button
-        class="text-action"
-        data-open-resource="seed-abbreviations"
-        onclick={() => app.openResource('seed-abbreviations')}
-      >
-        Read abbreviations such as PPE, SDS, and RUP
-      </button>
-    </div>
-  </details>
-  <details class="resource-block" id="handling-guide">
-    <summary>Best management practices &amp; handling</summary>
-    <div class="resource-copy">
+    </article>
+    <article class="panel full">
+      <h3>Best management practices</h3>
       <ol>
         {#each e.bmps as t (t.title)}
           <li>
@@ -119,24 +107,19 @@
         Practices are general. Follow the applicable U.S. label and local requirements; the Canadian
         resource is used for general stewardship, not Canadian legal requirements.
       </p>
-    </div>
-  </details>
-  <details class="resource-block" id="guide-references">
-    <summary>Guide references &amp; review dates</summary>
-    <div class="resource-copy">
+    </article>
+    <article class="panel full">
+      <h3>References &amp; review dates</h3>
       <p>
         Classification references: FRAC 2026 and IRAC v11.5 (February 2026). The guide is
         editorially reviewed; EPA imports do not automatically reassign resistance groups or rewrite
-        handling guidance.
+        BMPs.
       </p>
       <ul>
         {#each e.sources as x (x.id)}
           <li><ExtLink url={x.url} text={x.title} /></li>
         {/each}
       </ul>
-      <a class="guide-action" href={pdfUrl} download="CPN_Seed_Treatment_Comparison.pdf">
-        Download comparison fact sheet (PDF)
-      </a>
-    </div>
-  </details>
+    </article>
+  </div>
 {/if}

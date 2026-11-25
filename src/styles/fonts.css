@@ -1,0 +1,11 @@
+/*!
+ * Roboto Condensed, SIL Open Font License 1.1 (src/assets/RobotoCondensed-OFL.txt).
+ * Same rule as the legacy reference; bundled (inlined in the standalone file), no CDN.
+ */
+@font-face {
+  font-family: 'Roboto Condensed';
+  src: url('../assets/roboto-condensed.ttf') format('truetype');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}

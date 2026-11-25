@@ -6,7 +6,8 @@ import {
   automaticUpdatesText,
   catalogLastChanged,
   citationText,
-  dataNote,
+  heroModeText,
+  loadedNotice,
   epaDataAsOf,
   historyRows,
   updateWarning,
@@ -85,11 +86,20 @@ describe('dates and wording', () => {
     expect(c).toMatch(/^Crop Protection Network\. \d{4}\./);
   });
 
-  it('mentions missing formulations and the embedded snapshot in the data note', () => {
-    const note = dataNote(catalog, true);
-    expect(note).toContain('records lack ingredients');
-    expect(note).toContain('embedded snapshot');
-    expect(note).toMatch(/not efficacy or safety rankings\.$/);
+  it('notices the loaded workbook with the last change instead of a check time', () => {
+    const n = loadedNotice(catalog, status, true);
+    expect(n.title).toBe('EPA workbook loaded');
+    expect(n.message).toContain(`${catalog.products.length} active registrations`);
+    expect(n.message).toContain('Catalog last changed');
+    expect(n.message).toContain('embedded snapshot');
+    expect(n.message).toContain('records lack ingredients');
+    expect(n.message).not.toMatch(/retrieval|fixed snapshot/);
+  });
+
+  it('shows the EPA data date in the hero', () => {
+    expect(heroModeText('loading', catalog)).toBe('Connecting to catalog…');
+    expect(heroModeText('unavailable', catalog)).toBe('Live data not connected');
+    expect(heroModeText('ready', catalog)).toMatch(/^EPA data as of \w{3} \d+, \d{4}$/);
   });
 
   it('describes automatic updates per build', () => {

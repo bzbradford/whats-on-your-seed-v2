@@ -1,9 +1,11 @@
 <script lang="ts">
   import { labelAccess, labelActionText } from '../lib/labels';
   import type { Product } from '../lib/types';
+  import Icon from './Icon.svelte';
 
   let { product }: { product: Product } = $props();
-  const action = $derived(labelActionText(product, labelAccess(product)));
+  const access = $derived(labelAccess(product));
+  const action = $derived(labelActionText(product, access));
 </script>
 
 <a
@@ -14,5 +16,5 @@
   rel="noopener noreferrer"
   aria-label={action.ariaLabel}
 >
-  {action.title}<span aria-hidden="true">↗</span>
+  <Icon name={access.pdf ? 'download' : 'search'} />{action.title}<span aria-hidden="true">↗</span>
 </a>

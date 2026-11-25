@@ -5,6 +5,7 @@
   import { coverageText, detailWarning, recordTypeText, ref, rupText } from '../lib/product-facts';
   import type { Product } from '../lib/types';
   import ExtLink from './ExtLink.svelte';
+  import Icon from './Icon.svelte';
   import LabelAction from './LabelAction.svelte';
   import SafetyBadges from './SafetyBadges.svelte';
 
@@ -77,12 +78,8 @@
       </span>
     </p>
   {/if}
-  <button
-    class="text-action"
-    data-open-resource="warning-guide"
-    onclick={() => app.openResource('warning-guide')}
-  >
-    Signal words &amp; treatment warnings
+  <button data-tab="guide" onclick={() => app.goTo('guide', true)}>
+    <Icon name="book" />Signal words &amp; BMP guide →
   </button>
 </section>
 <div class="details-grid">

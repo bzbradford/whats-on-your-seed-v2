@@ -6,6 +6,7 @@
   import { fmt, localDate } from '../lib/format';
   import { MATRIX_NOTE, matrixRows, matrixSections } from '../lib/matrix';
   import { printMatrix } from '../lib/print';
+  import Icon from './Icon.svelte';
   import MatrixCellView from './MatrixCellView.svelte';
 
   const app = getApp();
@@ -143,7 +144,7 @@
           checkboxes in Explore products.
         </p>
         <button data-tab="products" onclick={() => app.goTo('products', true)}>
-          Explore products →
+          <Icon name="seed" />Explore products →
         </button>
       </div>
     {:else}

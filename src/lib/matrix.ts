@@ -78,7 +78,7 @@ export type MatrixRow =
   { section: string } | { section?: undefined; label: string; get: (p: Product) => MatrixCell };
 
 export const MATRIX_NOTE =
-  'Dates are separate: first registration, status change and label version. EPA percentages are not application rates. The EPA pest index spans the whole product, not a specific crop use. Label extracts cover only their stated crop and label version; consult the current container label and seed tag. Missing information means not reviewed or not supplied.';
+  'Dates are separate: first registration, status change and label version. EPA percentages are not application rates. The EPA pest index spans the whole product, not a specific crop use. Label extracts cover only their stated crop and label version; consult the current container label and seed tag. Missing information means not reviewed or not supplied. Provider availability does not establish state approval.';
 
 const textCell = (text: string | null | undefined): MatrixCell => {
   const t = String(text ?? 'Not supplied');
