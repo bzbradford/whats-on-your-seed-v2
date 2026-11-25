@@ -2,6 +2,45 @@
   "schema_version": 1,
   "updates": [
     {
+      "checked_at": "2026-11-25T22:58:23.586191+00:00",
+      "published_at": "2026-11-25T22:59:13.636065+00:00",
+      "outcome": "updated",
+      "publication_reasons": [
+        "product_records"
+      ],
+      "message": "Source data published.",
+      "workbook_created": "2026-09-21",
+      "workbook_sha256": "c8ae0c3f1d683914689d3b4e08904b4c617735b19120dc819412a70b652258bb",
+      "counts": {
+        "added": 0,
+        "changed": 3,
+        "removed": 0
+      },
+      "records": [
+        {
+          "registration_number": "264-968",
+          "action": "changed",
+          "fields": [
+            "safety"
+          ]
+        },
+        {
+          "registration_number": "62719-412",
+          "action": "changed",
+          "fields": [
+            "safety"
+          ]
+        },
+        {
+          "registration_number": "62719-493",
+          "action": "changed",
+          "fields": [
+            "safety"
+          ]
+        }
+      ]
+    },
+    {
       "checked_at": "2026-11-25T18:02:17.779873+00:00",
       "published_at": "2026-11-25T18:03:05.181969+00:00",
       "outcome": "metadata_updated",
