@@ -3,6 +3,7 @@
   import { factSheetUrl } from '../lib/assets';
   import { getApp } from '../lib/context';
   import GuideContent from './GuideContent.svelte';
+  import PrintViewButton from './PrintViewButton.svelte';
 
   const app = getApp();
   let pdfUrl = $state('');
@@ -26,7 +27,7 @@
     </div>
     <a class="guide-action" href={pdfUrl} download="CPN_Seed_Treatment_Comparison.pdf">
       Download comparison fact sheet ↓
-    </a>
+    </a><PrintViewButton class="guide-action" />
   </div>
   <div id="guide-content">
     {#if app.loadState === 'ready'}<GuideContent />{/if}

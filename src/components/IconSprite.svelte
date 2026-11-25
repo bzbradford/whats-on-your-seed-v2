@@ -1,5 +1,6 @@
 <script lang="ts">
-  // Static copy of the legacy inline SVG icon set (legacy/static/index.html, first body element).
+  // Static copy of the legacy inline SVG icon set (legacy/static/index.html, first body element),
+  // plus a print icon in the same stroke style.
 </script>
 
 <svg class="icon-sprite" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg">
@@ -34,6 +35,8 @@
       />
     </symbol><symbol id="icon-worm" viewBox="0 0 24 24">
       <path d="M3 8c4-8 7 7 11 0s10 0 5 4-1 10-6 8 3-8-3-7-9 0-7-5Z" />
+    </symbol><symbol id="icon-print" viewBox="0 0 24 24">
+      <path d="M7 9V3h10v6M7 17H4v-8h16v8h-3M7 14h10v7H7Z" />
     </symbol>
   </defs>
 </svg>

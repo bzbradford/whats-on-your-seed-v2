@@ -6,6 +6,7 @@
   import { DATE_ERROR, appliedFilters, siteSummary } from '../lib/filters';
   import { localDate } from '../lib/format';
   import Icon from './Icon.svelte';
+  import PrintViewButton from './PrintViewButton.svelte';
   import ProductCard from './ProductCard.svelte';
 
   const app = getApp();
@@ -310,7 +311,7 @@
           onclick={exportLabels}
         >
           <Icon name="download" />Export label links
-        </button>
+        </button><PrintViewButton />
       </div>
       <p id="label-help" class="small muted label-help">
         Open a label PDF and use its download / save control. <strong>Export label links</strong> saves
@@ -395,3 +396,19 @@
     </div>
   </div>
 </section>
+
+<style>
+  /* Print this view: the Oct 19 print CSS hides the whole workspace; print the results. */
+  @media print {
+    .workspace {
+      display: block !important;
+    }
+    .filter,
+    .toolbar,
+    .label-help,
+    .pager,
+    .mobile-filters {
+      display: none !important;
+    }
+  }
+</style>

@@ -82,7 +82,7 @@ test('offline: shows the embedded snapshot and says so', async ({ page }) => {
   await page.locator('#tab-data').click();
   await expect(page.locator('#data')).toContainText('Embedded snapshot; online checks enabled');
   await page.locator('#tab-guide').click();
-  expect(await page.locator('#guide .guide-action').getAttribute('href')).toMatch(
+  expect(await page.locator('#guide a.guide-action').getAttribute('href')).toMatch(
     /^data:application\/pdf;base64,/,
   );
   expect(remote.requests).toContain(PUBLISHED + 'catalog.json');

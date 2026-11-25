@@ -1,6 +1,7 @@
 <script lang="ts">
   import { getApp } from '../lib/context';
   import { fmt } from '../lib/format';
+  import Abbreviations from './Abbreviations.svelte';
   import ExtLink from './ExtLink.svelte';
   import Icon from './Icon.svelte';
   import SourceLinks from './SourceLinks.svelte';
@@ -108,6 +109,7 @@
         resource is used for general stewardship, not Canadian legal requirements.
       </p>
     </article>
+    <Abbreviations />
     <article class="panel full">
       <h3>References &amp; review dates</h3>
       <p>

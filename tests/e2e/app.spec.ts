@@ -342,13 +342,64 @@ test.describe('guides and sources', () => {
       await expect(page.locator('#guide')).toContainText(term);
     await expect(page.locator('#guide')).toContainText('Keep treated seed out of food');
     const download = page.waitForEvent('download');
-    await page.locator('#guide .guide-action').click();
+    await page.locator('#guide a.guide-action').click();
     const path = await (await download).path();
     expect(readFileSync(path!).subarray(0, 4).toString()).toBe('%PDF');
     await page.locator('#guide [data-tab="ingredients"]').click();
     await expect(page.locator('#tab-ingredients')).toBeFocused();
     await expect(page.locator('#ingredients')).toBeVisible();
   });
+
+  test('abbreviations guide (brought forward) sits in the treatment guide', async ({ page }) => {
+    await page.locator('#tab-guide').click();
+    await expect(page.locator('#guide #abbreviations h3')).toHaveText('Abbreviations & terms');
+    await expect(page.locator('#abbreviations dt')).toHaveCount(23);
+    for (const term of ['PPE', 'SDS', 'RUP'])
+      await expect(page.locator('#abbreviations dt', { hasText: term })).toHaveCount(1);
+  });
+
+  for (const view of ['products', 'ingredients', 'guide', 'data'])
+    test(`Print this view prints the ${view} tab with the disclaimer`, async ({ page }) => {
+      await page.locator(`#tab-${view}`).click();
+      await page.emulateMedia({ media: 'print' });
+      const printed = await page.evaluate((id) => {
+        let state: Record<string, unknown> = {};
+        const shown = (sel: string) => {
+          const el = document.querySelector(sel);
+          return !!el && getComputedStyle(el).display !== 'none';
+        };
+        window.print = () => {
+          state = {
+            panel: shown(`#${id}`),
+            content: shown(
+              {
+                products: '.workspace',
+                ingredients: '.ingredient-grid',
+                guide: '.guide-grid',
+                data: '.data-grid',
+              }[id]!,
+            ),
+            filters: shown('#filters'),
+            footer: shown('footer.disclaimer'),
+            disclaimerOpen: (document.getElementById('tool-disclaimer') as HTMLDetailsElement).open,
+            button: shown(`#${id} .print-view`),
+          };
+        };
+        (document.querySelector(`#${id} .print-view`) as HTMLButtonElement).click();
+        return state;
+      }, view);
+      expect(printed).toEqual({
+        panel: true,
+        content: true,
+        filters: false,
+        footer: true,
+        disclaimerOpen: true,
+        button: false,
+      });
+      expect(
+        await page.locator('#tool-disclaimer').evaluate((e) => (e as HTMLDetailsElement).open),
+      ).toBe(false);
+    });
 
   test('the dialog links to the treatment guide', async ({ page }) => {
     await page.locator('#query').fill('100-1508');

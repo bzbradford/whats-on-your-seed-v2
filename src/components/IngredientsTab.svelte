@@ -4,6 +4,7 @@
   import { s } from '../lib/format';
   import { ingredientCountText, ingredientGuide } from '../lib/ingredients';
   import Icon from './Icon.svelte';
+  import PrintViewButton from './PrintViewButton.svelte';
   import PurposeBadge from './PurposeBadge.svelte';
 
   const app = getApp();
@@ -43,6 +44,7 @@
         bind:value={app.ingredientQuery}
       />
     </div>
+    <PrintViewButton class="" />
   </div>
   <p id="ingredient-count" class="small muted">
     {ready ? ingredientCountText(entries.length) : ''}
@@ -72,3 +74,11 @@
     {/each}
   </div>
 </section>
+
+<style>
+  @media print {
+    .ingredient-grid {
+      display: grid !important;
+    }
+  }
+</style>

@@ -11,7 +11,8 @@
     | 'download'
     | 'fungus'
     | 'bug'
-    | 'worm';
+    | 'worm'
+    | 'print';
 </script>
 
 <script lang="ts">

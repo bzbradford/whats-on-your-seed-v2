@@ -54,3 +54,12 @@
     </div>
   </details>
 </footer>
+
+<style>
+  /* Printed views keep the disclaimer (the Oct 19 print CSS hid it). */
+  @media print {
+    .disclaimer {
+      display: block !important;
+    }
+  }
+</style>
