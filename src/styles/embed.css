@@ -1,0 +1,13 @@
+/* ?embed: compact layout for iframes. Minimal until Phase 4. */
+html[data-view='embed'] header,
+html[data-view='embed'] .intro {
+  display: none;
+}
+html[data-view='embed'] {
+  height: 100%;
+  overflow: hidden;
+}
+html[data-view='embed'] body {
+  height: 100%;
+  overflow: auto;
+}

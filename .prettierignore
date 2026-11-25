@@ -10,3 +10,4 @@ legacy/
 pipeline/
 # Generated fact sheet
 public/assets/
+src/styles/legacy.css

@@ -35,6 +35,8 @@
 - No CDN resources; the bundle and single-file build must be self-contained (fonts/logos included).
 - The app must work in a cross-origin iframe: `localStorage` is optional (wrap in try/catch), outbound links use `target="_blank"`.
 - Never hand-edit generated data JSON; change the pipeline or its reference inputs.
+- **Styling during the parity phase (overrides the predecessor's scoped `@apply` convention):** the legacy `<style>` block is lifted verbatim into `src/styles/legacy.css` (global, prettier-ignored) and components reuse the legacy DOM, ids and class names. Don't restyle, add scoped styles, or rename classes until parity is signed off; Tailwind is loaded without preflight (`src/app.css`) so it can't alter the legacy rendering. Any visual change must keep `tests/e2e/parity.spec.ts` at 0 differing pixels, or be an intentional, masked deviation listed in PLAN.md.
+- Business rules (search, filters, labels, safety, matrix, CSV, currency, sync) live in framework-free `src/lib/*.ts` with Vitest tests. `src/lib/app-state.svelte.ts` is the only runes module: thin glue that calls them. Components read `getApp()` (context) and render.
 - Content correctness matters (pesticide registration data): preserve the legacy app's disclaimers, provenance and "missing/unreviewed" flags when porting.
 
 ## Commands
@@ -46,7 +48,9 @@ pnpm build              # Pages build -> dist/
 pnpm build:standalone   # offline single file -> dist-standalone/index.html (catalog inlined)
 pnpm preview            # serve dist/
 pnpm test               # Vitest unit tests (tests/unit/)
-pnpm test:e2e           # build, then Playwright against vite preview (tests/e2e/)
+pnpm test:e2e           # both builds, then Playwright: vite preview (4173) + legacy app (8081)
+pnpm exec playwright test parity   # only the legacy-vs-new screenshot comparison (needs dist/ built)
+python3 legacy/serve.py --port 8081 --no-browser  # view the legacy reference app
 pnpm lint / pnpm format # Prettier + ESLint (lint runs as the pre-commit hook)
 pnpm check              # svelte-check, fails on any warning
 pnpm verify             # lint + check + unit tests + both builds (CI also runs e2e)
@@ -61,9 +65,16 @@ uv run python scheduled_update.py --output /tmp/out/catalog.json  # dry run (cop
 
 ## Key files
 
-- `src/lib/catalog.ts` — catalog validation, fetch, and `loadCatalog()` (fetch on Pages; inlined `?raw` import when `MODE === 'standalone'`, dead-code-eliminated from the Pages bundle)
-- `src/lib/view-mode.ts` — `?embed` → compact layout
-- `src/lib/types.ts` — catalog types (partial; grow as features are ported)
+- `src/App.svelte` — page shell (header, intro, about, notice, tabs, footer); mounts into `<body>` (legacy print CSS selects `body > header`/`body > main`)
+- `src/components/` — `ProductsTab`, `ProductCard`, `MatrixTab` (+ `MatrixCellView`), `ResourcesTab` (+ `GuideContent`, `DataGrid`, static `Abbreviations`), `DetailDialog` (+ `ProductDetail`, `IngredientDetail`), `CompareBar`, `Disclaimer`, small `ExtLink`/`LabelAction`/`SafetyBadges`/`SourceLinks`
+- `src/styles/legacy.css` — legacy CSS, verbatim; `src/styles/embed.css` — minimal `?embed` rules
+- `src/lib/app-state.svelte.ts` — `AppState`: catalog/status/history, filters, page, selection, view, dialog, toast, live regions; `start()` / `poll()` (five-minute refresh, both builds)
+- `src/lib/filters.ts` (search/filters/sort/pager/applied chips), `product-facts.ts` (reference lookup, FRAC/IRAC, signal word, RUP, quality), `labels.ts` (EPA label PDF identity guards), `compare.ts` (selection cap/order, localStorage, matrix picker), `matrix.ts` (label-extract guards, matrix rows), `csv.ts` (exports, injection-safe cells), `ingredients.ts`, `currency.ts` (data dates, warnings, citation, history), `sync.ts` (fetch published files, carry filters over), `announcer.ts`, `print.ts`, `format.ts`
+- `src/lib/catalog.ts` — catalog/status/history validation (legacy's published-catalog checks), fetch with timeout, and `loadEmbedded()` (standalone only: catalog, sync-status and update-history inlined via `?raw`, dead-code-eliminated from the Pages bundle)
+- `src/lib/types.ts` — full catalog, sync-status and update-history types; `tests/unit/types.test.ts` checks them against `public/data` and the pipeline fixture
+- `src/lib/assets.ts` — fact sheet URL: `public/assets/` on Pages, an inlined `data:` URL in the standalone file
+- `tests/unit/` — Vitest; legacy `logic_test.cjs` cases run against the frozen `pipeline/tests/fixtures/catalog-2026-10-19.json.gz`
+- `tests/e2e/app.spec.ts` (legacy `ui_test.cjs` behaviours), `standalone.spec.ts` (file://, offline/online/outage), `parity.spec.ts` + `parity-helpers.ts` (legacy vs new screenshots, pixelmatch)
 - `vite.config.js` — both build modes, `$data` alias, Vitest config
 - `.github/workflows/deploy.yaml` — CI (web: lint, check, unit, builds, e2e; pipeline: ruff, pytest) and Pages deploy from `main`
 - `.github/workflows/data-update.yml` — weekly, Mondays 06:30 America/Chicago (manual run has a `force` option): HEAD-check EPA → download only if changed → if `public/data/` changed, validate everything → commit → dispatch `deploy.yaml`. Unchanged weeks commit nothing; failures fail the job (GitHub emails) and write nothing.
@@ -79,3 +90,8 @@ uv run python scheduled_update.py --output /tmp/out/catalog.json  # dry run (cop
 - TypeScript is pinned to 6.0.x: typescript-eslint and svelte-check don't support TS 7 yet.
 - Playwright's `webServer` must invoke `vite preview` directly, not through `pnpm`, or the server is orphaned and Playwright hangs on exit.
 - Don't `import` the catalog JSON as a module (TS would infer a type from 2.8 MB of JSON). Use `?raw` + `JSON.parse` + `parseCatalog`.
+- Svelte text nodes can shift glyphs by sub-pixels: `{label}{' '}<span>` renders differently from legacy's single `"Compare "` text node, and the parity test catches it. Keep adjacent literal text in one node; when legacy has no whitespace between inline elements, write them touching (`</a><span>`), as prettier's `><` hugging does.
+- Parity screenshots use an absolute pixel budget (25), not a ratio: on a 25,000-px-tall page a ratio hides a whole changed line. Everything currently compares at 0.
+- `catalog.json` is loaded with `$state.raw` (never deep-proxied). Filter haystacks are cached per product object in a WeakMap.
+- The legacy reference server (`legacy/serve.py`) is Playwright's second `webServer` on port 8081; e2e needs `python3` on the PATH.
+- `legacy/static/index.html` sets `--font-heading` to Arial in its final cascade, so Roboto Condensed is never loaded (see `legacy/BRANDING.md`). `src/assets/roboto-condensed.ttf` is unused, kept with its licence only for reference.
