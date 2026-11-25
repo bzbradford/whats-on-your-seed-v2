@@ -11,7 +11,7 @@ A searchable database of EPA-registered field crop seed treatments for the [Crop
 
 ## How it works
 
-1. **Pipeline** ([`pipeline/`](pipeline/), Python). A daily GitHub Actions job ([`data-update.yml`](.github/workflows/data-update.yml)) downloads EPA's APPRIL workbook, keeps the 14 seed-treatment sites in scope, reconciles changes against a retained SQLite history, and writes validated JSON to [`public/data/`](public/data/).
+1. **Pipeline** ([`pipeline/`](pipeline/), Python). A weekly GitHub Actions job ([`data-update.yml`](.github/workflows/data-update.yml)) asks EPA whether its APPRIL workbook has changed. If it has, the job downloads it, keeps the 14 seed-treatment sites in scope, and writes validated JSON to [`public/data/`](public/data/). It commits only when the catalog actually changes, so the git history of `public/data/` is the change log.
 2. **Web app** (Svelte, at the repo root). The app loads that JSON. It is built and deployed to GitHub Pages on every push to `main` and after each data update.
 
 There is no server: everything is static files.
@@ -28,7 +28,7 @@ pnpm test:e2e            # browser tests (first time: pnpm exec playwright insta
 
 cd pipeline
 uv run pytest            # pipeline tests, including checks on the committed catalog
-uv run python scheduled_update.py --db private/catalog.sqlite   # a real update from EPA
+uv run python scheduled_update.py   # check EPA; update public/data/ if the workbook changed
 ```
 
 ## Limitations

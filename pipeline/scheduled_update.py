@@ -1,8 +1,15 @@
-"""Stage, validate and reconcile a scheduled EPA/provider update.
+"""Check EPA for a new APPRIL workbook and publish the catalog only if it changed.
 
-GitHub publishes the resulting files in one commit. On a host, catalog.json is
-the atomic publication pointer; the last good catalog survives source failures.
-No provider website scraping, source credentials, or workbook files are published.
+1. A HEAD request compares EPA's ETag/Last-Modified/Content-Length with the values
+   recorded in sync-status.json. If they match, nothing is downloaded or written.
+2. Otherwise the workbook is downloaded, staged and validated. Files are written
+   only when the catalog content changes, or (status only) when EPA re-uploaded
+   an identical workbook, so the next check can skip the download again.
+3. On failure nothing is written; the last published catalog stays in place and
+   the caller (the GitHub Actions job) fails visibly.
+
+Git history of public/data/ is the change log. No provider website scraping,
+source credentials, or workbook files are published.
 """
 
 import argparse
@@ -16,17 +23,20 @@ import tempfile
 from types import SimpleNamespace
 
 from catalog import ROOT, atomic_write, now, product_facts, source_url
-from record_store import tracked_registrations, upsert_catalog
+from refresh_epa import probe_source
 from refresh_epa import run as refresh
 
 WORKFLOW = 'https://github.com/bzbradford/whats-on-your-seed-v2/actions/workflows/data-update.yml'
 SCHEDULE = {
     'kind': 'GitHub Actions',
-    'cron': '37 6 * * *',
+    'cron': '30 6 * * 1',
     'timezone': 'America/Chicago',
     'workflow_url': WORKFLOW,
 }
-AUTOMATION = 'GitHub Actions: daily at 06:37 America/Chicago; checks for new EPA weekly exports'
+AUTOMATION = (
+    'GitHub Actions: weekly on Mondays at 06:30 America/Chicago; '
+    'downloads the EPA workbook only when it has changed'
+)
 
 
 def read_json(path, default=None):
@@ -119,21 +129,25 @@ def source_states(args, catalog, checked, success):
 def run(args):
     output = pathlib.Path(args.output)
     status_path = output.with_name('sync-status.json')
-    database = pathlib.Path(getattr(args, 'db', None) or ROOT / 'private/catalog.sqlite')
-    if database.resolve().is_relative_to(output.parent.resolve()):
-        raise ValueError('Database must be outside the public output directory')
     old = read_json(output)
     if not old or not old.get('products'):
         raise ValueError('An existing validated catalog is required for a scheduled update')
     previous_status = read_json(status_path, {})
     checked = now()
-    candidate = None
     try:
         # Scheduled URLs must be HTTPS; credentials belong in environment secrets.
         for name in ('greenbook', 'cdms'):
             value = getattr(args, name, None)
             if value:
                 source_url(value)
+        headers = probe_source()
+        if (
+            headers
+            and headers == previous_status.get('source_headers')
+            and not getattr(args, 'force', False)
+        ):
+            print(json.dumps({'outcome': 'not_modified', 'source_headers': headers}))
+            return 0
         work = ROOT / 'private'
         work.mkdir(exist_ok=True)
         with tempfile.TemporaryDirectory(prefix='scheduled-', dir=work) as directory:
@@ -148,98 +162,76 @@ def run(args):
                 cdms=args.cdms,
                 allow_large_change=False,
                 require_complete_feeds=True,
-                tracked_registrations=sorted(
-                    set(tracked_registrations(database)) | {p['id'] for p in old['products']}
-                ),
-                automation=AUTOMATION
-                if os.getenv('GITHUB_ACTIONS') == 'true'
-                else 'Manual / host runner; GitHub schedule configured separately',
+                # Registrations that leave scope get an EPA status observation in the audit.
+                tracked_registrations=sorted(p['id'] for p in old['products']),
+                automation=AUTOMATION,
             )
             if refresh(job):
                 raise RuntimeError('Source update did not complete')
             candidate = read_json(staged)
-            changes = changes_between(old, candidate)
-            reasons = publication_reasons(old, candidate)
-            changed = bool(reasons)
-            outcome, message = publication_report(reasons)
-            counts = {
-                k: sum(x['action'] == k for x in changes) for k in ('added', 'changed', 'removed')
-            }
-            status = {
-                'state': 'success',
-                'outcome': outcome,
-                'publication_reasons': reasons,
-                'checked_at': checked,
-                'last_successful_sync': checked,
-                'last_publication_at': candidate['meta']['imported_at']
-                if changed
-                else previous_status.get('last_publication_at', old['meta'].get('imported_at')),
-                'message': message,
-                'scheduler': SCHEDULE,
-                'sources': source_states(args, candidate, checked, True),
-                'workbook_sha256': candidate['meta']['audit']['sha256'],
-                'changes': counts,
-            }
-            # Persist normalized product records only after acquisition and all
-            # existing scope/provider/schema checks have succeeded.
-            status['database_changes'] = upsert_catalog(database, candidate, old, checked)
-            if changed:
-                history_path = output.with_name('update-history.json')
-                history = read_json(history_path, {'schema_version': 1, 'updates': []})
-                entry = {
-                    'checked_at': checked,
-                    'published_at': status['last_publication_at'],
-                    'outcome': outcome,
-                    'publication_reasons': reasons,
-                    'message': message,
-                    'workbook_created': candidate['meta']['source_snapshot_date'],
-                    'workbook_sha256': candidate['meta']['audit']['sha256'],
-                    'counts': counts,
-                    'records': changes,
-                }
-                history['updates'] = ([entry] + history['updates'])[:52]
-                candidate['meta']['last_update_summary'] = counts
-                candidate['meta']['source_updates'] = status['sources']
-                # All acquisition and validation has completed before publication.
-                atomic_write(history_path, json.dumps(history, ensure_ascii=False, indent=2))
-                atomic_write(
-                    output.with_name('epa-import-audit.json'),
-                    json.dumps(candidate['meta']['audit'], ensure_ascii=False, indent=2),
-                )
-                atomic_write(output, json.dumps(candidate, ensure_ascii=False))
-            atomic_write(status_path, json.dumps(status, ensure_ascii=False, indent=2))
-            print(
-                json.dumps(
-                    {
-                        'outcome': status['outcome'],
-                        'products': len(candidate['products']),
-                        'changes': counts,
-                        'database_changes': status['database_changes'],
-                        'workbook_sha256': status['workbook_sha256'],
-                    }
-                )
-            )
-            return 0
-    except Exception as exc:
-        # Do not put endpoint URLs, tokens, or arbitrary server errors in public files.
-        status = {
-            'state': 'failed',
-            'checked_at': checked,
-            'last_successful_sync': previous_status.get('last_successful_sync'),
-            'last_publication_at': previous_status.get(
-                'last_publication_at', old['meta'].get('imported_at')
-            ),
-            'message': 'Update failed. Last published catalog retained; see the Actions run.',
-            'scheduler': SCHEDULE,
-            'sources': source_states(args, old, checked, False),
+        changes = changes_between(old, candidate)
+        reasons = publication_reasons(old, candidate)
+        changed = bool(reasons)
+        headers_changed = bool(headers) and headers != previous_status.get('source_headers')
+        outcome, message = publication_report(reasons)
+        counts = {
+            k: sum(x['action'] == k for x in changes) for k in ('added', 'changed', 'removed')
         }
-        for name, item in status['sources'].items():
-            item['checked_at'] = previous_status.get('sources', {}).get(name, {}).get('checked_at')
+        summary = {'outcome': outcome, 'products': len(candidate['products']), 'changes': counts}
+        if not changed and not headers_changed:
+            print(json.dumps(summary))
+            return 0
+        if not changed:
+            # EPA re-uploaded an identical workbook: record its headers only.
+            status = dict(previous_status, source_headers=headers)
+            atomic_write(status_path, json.dumps(status, ensure_ascii=False, indent=2))
+            print(json.dumps(dict(summary, outcome='headers_updated')))
+            return 0
+        status = {
+            'state': 'success',
+            'outcome': outcome,
+            'publication_reasons': reasons,
+            'checked_at': checked,
+            'last_publication_at': candidate['meta']['imported_at'],
+            'message': message,
+            'scheduler': SCHEDULE,
+            'sources': source_states(args, candidate, checked, True),
+            'workbook_sha256': candidate['meta']['audit']['sha256'],
+            'source_headers': headers or previous_status.get('source_headers'),
+            'changes': counts,
+        }
+        history_path = output.with_name('update-history.json')
+        history = read_json(history_path, {'schema_version': 1, 'updates': []})
+        entry = {
+            'checked_at': checked,
+            'published_at': status['last_publication_at'],
+            'outcome': outcome,
+            'publication_reasons': reasons,
+            'message': message,
+            'workbook_created': candidate['meta']['source_snapshot_date'],
+            'workbook_sha256': candidate['meta']['audit']['sha256'],
+            'counts': counts,
+            'records': changes,
+        }
+        history['updates'] = ([entry] + history['updates'])[:52]
+        candidate['meta']['last_update_summary'] = counts
+        candidate['meta']['source_updates'] = status['sources']
+        # All acquisition and validation has completed before publication.
+        atomic_write(history_path, json.dumps(history, ensure_ascii=False, indent=2))
+        atomic_write(
+            output.with_name('epa-import-audit.json'),
+            json.dumps(candidate['meta']['audit'], ensure_ascii=False, indent=2),
+        )
+        atomic_write(output, json.dumps(candidate, ensure_ascii=False))
         atomic_write(status_path, json.dumps(status, ensure_ascii=False, indent=2))
+        print(json.dumps(summary))
+        return 0
+    except Exception as exc:
+        # Do not put endpoint URLs, tokens, or arbitrary server errors in output.
         print(
             'Scheduled update failed ('
             + type(exc).__name__
-            + '). The previous catalog is retained.',
+            + '). Nothing was written; the published catalog is unchanged.',
             file=sys.stderr,
         )
         return 1
@@ -249,9 +241,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output', default=str(ROOT.parent / 'public/data/catalog.json'))
     parser.add_argument(
-        '--db',
-        default=os.getenv('CPN_SEED_DB') or str(ROOT / 'private/catalog.sqlite'),
-        help='Persistent SQLite database outside the public web directory',
+        '--force',
+        action='store_true',
+        help='Download and reconcile even if EPA reports the workbook is unchanged',
     )
     parser.add_argument('--greenbook', default=os.getenv('GREENBOOK_FEED_URL') or None)
     parser.add_argument('--cdms', default=os.getenv('CDMS_FEED_URL') or None)

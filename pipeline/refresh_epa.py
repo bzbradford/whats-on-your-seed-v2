@@ -26,21 +26,46 @@ from catalog import (
 )
 
 
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, *args, **kwargs):
+        raise ValueError('EPA download redirected; review the official download URL')
+
+
+USER_AGENT = 'CPN-Seed-Treatment-Catalog/1.0'
+
+
+def probe_source(timeout=30):
+    """Return EPA's identifying headers for the workbook, or None if unavailable.
+
+    A None result means "unknown", so the caller downloads the workbook anyway.
+    """
+    request = urllib.request.Request(SOURCE_URL, method='HEAD', headers={'User-Agent': USER_AGENT})
+    try:
+        with urllib.request.build_opener(_NoRedirect).open(request, timeout=timeout) as r:
+            headers = {
+                'etag': r.headers.get('ETag'),
+                'last_modified': r.headers.get('Last-Modified'),
+                'content_length': r.headers.get('Content-Length'),
+            }
+    except Exception as exc:
+        print(
+            'EPA header check failed (' + type(exc).__name__ + '); will download.', file=sys.stderr
+        )
+        return None
+    return headers if any(headers.values()) else None
+
+
 def download_workbook(destination):
     # Never send source-feed credentials to EPA. Reject unexpected redirects.
-    class NoRedirect(urllib.request.HTTPRedirectHandler):
-        def redirect_request(self, *args, **kwargs):
-            raise ValueError('EPA download redirected; review the official download URL')
-
     request = urllib.request.Request(
         SOURCE_URL,
         headers={
-            'User-Agent': 'CPN-Seed-Treatment-Catalog/1.0',
+            'User-Agent': USER_AGENT,
             'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         },
     )
     with (
-        urllib.request.build_opener(NoRedirect).open(request, timeout=90) as r,
+        urllib.request.build_opener(_NoRedirect).open(request, timeout=90) as r,
         open(destination, 'wb') as out,
     ):
         total = 0

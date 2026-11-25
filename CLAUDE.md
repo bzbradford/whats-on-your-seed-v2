@@ -12,7 +12,7 @@
 ## Layout
 
 - repo root: the Svelte app (`src/`, `tests/`, `public/`)
-- `public/data/` — **pipeline output, committed**: `catalog.json`, `sync-status.json`, `update-history.json`, `epa-import-audit.json`. The daily job commits here.
+- `public/data/` — **pipeline output, committed**: `catalog.json`, `sync-status.json`, `update-history.json`, `epa-import-audit.json`. The weekly job commits here, only when the catalog changes.
 - `pipeline/` — Python (uv). `reference/` holds the hand-curated inputs (scope, ingredient FRAC/IRAC reference, education text, label specs, source references).
 - `legacy/` — the original app, **frozen** as the visual/behaviour reference for the port. Its `static/` has its own catalog snapshot and still runs (`python3 legacy/serve.py`). Don't edit it; delete it at cutover.
 
@@ -26,7 +26,7 @@
   1. Pages site: full-page view by default; `?embed` (or similar) gives a compact layout for iframing.
   2. Standalone single-file HTML (`vite-plugin-singlefile`) with the catalog embedded for offline use. It may poll the published Pages JSON for updates.
 - **Tests:** Vitest for pure logic (filter/search/compare/CSV in `src/lib/`, framework-free TS), Playwright for browser/e2e, pytest for the pipeline.
-- **Pipeline:** Python managed with uv, run by the daily GitHub Actions job. It writes validated JSON that the frontend loads at runtime (Pages) or embeds at build time (single-file).
+- **Pipeline:** Python managed with uv, run by the weekly GitHub Actions job. It writes validated JSON that the frontend loads at runtime (Pages) or embeds at build time (single-file).
 
 ## Conventions
 
@@ -54,8 +54,9 @@ pnpm verify             # lint + check + unit tests + both builds (CI also runs 
 cd pipeline
 uv run pytest           # pipeline tests, incl. checks on the committed public/data/catalog.json
 uv run ruff check . && uv run ruff format .
-uv run python scheduled_update.py --db private/catalog.sqlite                # real EPA update (writes public/data/)
-uv run python scheduled_update.py --db /tmp/x.sqlite --output /tmp/out/catalog.json  # dry run elsewhere
+uv run python scheduled_update.py            # check EPA; writes public/data/ only if the catalog changed
+uv run python scheduled_update.py --force    # download even if EPA's headers are unchanged
+uv run python scheduled_update.py --output /tmp/out/catalog.json  # dry run (copy public/data/*.json there first)
 ```
 
 ## Key files
@@ -65,11 +66,13 @@ uv run python scheduled_update.py --db /tmp/x.sqlite --output /tmp/out/catalog.j
 - `src/lib/types.ts` — catalog types (partial; grow as features are ported)
 - `vite.config.js` — both build modes, `$data` alias, Vitest config
 - `.github/workflows/deploy.yaml` — CI (web: lint, check, unit, builds, e2e; pipeline: ruff, pytest) and Pages deploy from `main`
-- `.github/workflows/data-update.yml` — weekly, Mondays 06:37 America/Chicago: refresh from EPA → validate everything → commit `public/data/` → dispatch `deploy.yaml`. SQLite history persists between runs as the `seed-catalog-sqlite` Actions artifact (90-day retention).
-- `pipeline/scheduled_update.py` — entry point for the daily job; `catalog.py` holds shared paths, publish/validation logic; `appril_workbook.py` parses the EPA xlsx with stdlib only
+- `.github/workflows/data-update.yml` — weekly, Mondays 06:30 America/Chicago (manual run has a `force` option): HEAD-check EPA → download only if changed → if `public/data/` changed, validate everything → commit → dispatch `deploy.yaml`. Unchanged weeks commit nothing; failures fail the job (GitHub emails) and write nothing.
+- `pipeline/scheduled_update.py` — entry point for the weekly job (its docstring explains the write rules); `sync-status.json` holds EPA's last-seen `source_headers`; `catalog.py` holds shared paths, publish/validation logic; `appril_workbook.py` parses the EPA xlsx with stdlib only
 
 ## Gotchas
 
+- `sync-status.json` is only rewritten when the catalog changes, so its `checked_at` is when the current catalog was produced, not the last check. Don't build a "last checked" UI on it; the Actions run history is the record of checks.
+- Scheduled cron times avoid `:00` on purpose: GitHub delays or drops scheduled runs at the top of the hour under load.
 - Pushes made with `GITHUB_TOKEN` don't trigger workflows, which is why `data-update.yml` dispatches the deploy explicitly.
 - `pipeline/tests/test_published_catalog.py` checks the committed `public/data/` files, so a bad data commit fails CI.
 - `gh` defaults to the `upstream` remote when one exists. `gh repo set-default` has been set to the fork locally; pass `-R bzbradford/whats-on-your-seed-v2` in fresh clones.

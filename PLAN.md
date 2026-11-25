@@ -28,7 +28,12 @@ Goal: rebuild the legacy monolithic `legacy/static/index.html` (~125 KB, one inl
 - [x] Move Python to `pipeline/` with `pyproject.toml` (uv, Python 3.12), unittest suite runs under pytest, ruff format + lint
 - [x] Reference inputs moved `data/` → `pipeline/reference/`; output goes to committed `public/data/`; `scripts/sync-data.js` removed
 - [x] Legacy app frozen under `legacy/` (with its own catalog snapshot) as the parity reference
-- [x] `data-update.yml` (replaces `seed-database-update.yml`): daily refresh → pytest + `pnpm verify` + e2e → commit `public/data/` → dispatch Pages deploy (GITHUB_TOKEN pushes don't trigger workflows)
+- [x] `data-update.yml` (replaces `seed-database-update.yml`): refresh → pytest + `pnpm verify` + e2e → commit `public/data/` → dispatch Pages deploy (GITHUB_TOKEN pushes don't trigger workflows)
+- [x] Update job redesign (2026-11-25), replacing the legacy daily, always-commit setup:
+  - Weekly (Mondays 06:30 Central) plus a manual run with `force`
+  - HEAD request first: EPA's ETag/Last-Modified/Content-Length are compared with `sync-status.json` `source_headers`; unchanged means no download (0.3 s vs ~90 s)
+  - Writes and commits only when catalog content changes (or headers only, if EPA re-uploads an identical file). No timestamp-only commits; failures write nothing and fail the job
+  - Removed the persistent SQLite store (`record_store.py`) and its 90-day Actions artifact. Git history of `public/data/` is the change log; previously published registrations still get out-of-scope status observations via the current catalog
 - [x] CI runs the pipeline job (ruff + pytest) alongside the web build; deploy needs both
 - [x] First manual `data-update` run succeeded on GitHub (run 45663835699): bot commit → dispatched deploy → live `sync-status.json` updated
 - **Catalog split: deferred.** The 2.8 MB file is ~287 KB gzipped as served by Pages. Moving `target_pests_raw` (used only by the comparison matrix) to a lazy file would cut that to ~126 KB, but adds lazy-loading to compare, CSV export and the standalone build. Revisit after parity if load time matters.
@@ -66,7 +71,7 @@ Taken from the legacy `static/index.html`. Tick items when ported **and** tested
 
 - [ ] Load catalog (products, scope, ingredient_reference, education, label_specs, meta)
 - [ ] Single-file mode: embedded snapshot, poll the published catalog every 5 min, offline fallback, keep filters/selection on refresh
-- [ ] Sync-status/update-history display, "last EPA check", 48-hour staleness warning
+- [ ] Data currency display: "EPA data as of" (workbook date) and "catalog last changed" (`last_publication_at`), plus update history. **Intentional deviation:** no "last EPA check" time or 48-hour staleness warning, since checks no longer commit (see Phase 2)
 - [ ] Notice/warning banners, toast, screen-reader announcements
 
 **Products tab**
@@ -106,11 +111,6 @@ Taken from the legacy `static/index.html`. Tick items when ported **and** tested
 - Catalog size strategy (see Phase 2)
 - What to do about fact sheet generation (`build_fact_sheet.py`, reportlab)
 
-## Open decisions: update job design (2026-11-25)
+## Follow-ups noticed
 
-Under review. The job runs weekly as a stopgap; it was daily in the legacy setup.
-
-- EPA's 98.5 MB workbook sends `Last-Modified`/`ETag` headers and was last modified 2026-09-22. A conditional request could skip the download when nothing changed.
-- 30 of upstream's 33 bot commits changed only timestamps in `sync-status.json`. Proposal: commit only when the catalog content changes.
-- If check-only runs no longer commit, the legacy "last EPA check" display and 48-hour staleness warning need a different approach.
-- The SQLite history (kept as a 90-day Actions artifact) may be redundant with git history of `catalog.json` once commits are change-only. Needs a closer look at what `record_store.py` tracks.
+- `catalog.py` still has `sync()` / `filter_products()` / `snapshot_validate()`, an alternative import path from a normalized JSON feed (`EPA_FEED_URL`) that no job uses. `refresh_epa.py` also builds a throwaway SQLite DB on each run just to seed its rollback/30%-loss guards from the published catalog. Both could be simplified (guards compare against the published JSON directly) with no behaviour change.

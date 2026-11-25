@@ -284,6 +284,37 @@ class WorkbookTests(unittest.TestCase):
                 publish_workbook(p, a, args)
             self.assertEqual(before, pathlib.Path(args.output).read_bytes())
 
+    def test_unrelated_invalid_identity_does_not_break_status_tracking(self):
+        # Moved from the removed record_store tests: tracking previously published
+        # registrations must not trip over unrelated malformed rows.
+        with tempfile.TemporaryDirectory() as d:
+            path = pathlib.Path(d) / 'source.xlsx'
+            rows = [record(REG_NUM='100-' + str(i)) for i in range(1, 6)]
+            rows.append(
+                record(REG_NUM='INVALID', REG_TYPE='DP', STATUS_GROUP='Inactive', SITES='Apples')
+            )
+            fixture(path, rows)
+            products, _ = read_workbook(path, '2026-10-19', tracked=['100-1'])
+            self.assertEqual(len(products), 5)
+            # A matching active row still fails the original strict validation.
+            rows[-1].update(STATUS_GROUP='Active', SITES=rows[0]['SITES'])
+            fixture(path, rows)
+            with self.assertRaisesRegex(ValueError, 'registration number'):
+                read_workbook(path, '2026-10-19', tracked=['100-1'])
+
+    def test_tracked_registration_leaving_scope_is_observed(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = pathlib.Path(d) / 'source.xlsx'
+            rows = [record(REG_NUM='100-' + str(i)) for i in range(1, 6)]
+            rows[0].update(
+                STATUS_GROUP='Inactive', STATUS='Cancelled', STATUS_DESC='Cancelled fixture'
+            )
+            fixture(path, rows)
+            products, audit = read_workbook(path, '2026-10-19', tracked=['100-1'])
+            self.assertNotIn('100-1', {p['id'] for p in products})
+            observed = {x['registration_number']: x for x in audit['tracked_out_of_scope']}
+            self.assertIn('100-1', observed)
+
 
 if __name__ == '__main__':
     unittest.main()
