@@ -113,4 +113,5 @@ Taken from the legacy `static/index.html`. Tick items when ported **and** tested
 
 ## Follow-ups noticed
 
-- `catalog.py` still has `sync()` / `filter_products()` / `snapshot_validate()`, an alternative import path from a normalized JSON feed (`EPA_FEED_URL`) that no job uses. `refresh_epa.py` also builds a throwaway SQLite DB on each run just to seed its rollback/30%-loss guards from the published catalog. Both could be simplified (guards compare against the published JSON directly) with no behaviour change.
+- [x] Removed the unused JSON-feed import path (`catalog.sync` / `filter_products` / `snapshot_validate`, `EPA_FEED_URL`) and the throwaway per-run SQLite DB. The rollback and 30%-loss guards now compare against the published catalog JSON. A forced real run produced byte-identical output.
+- `pipeline/sources.py` (EPA PPIS fixed-width parser, Greenbook page scraper) is a manual research tool that no job uses; its output is "review material". Keep or drop: undecided.

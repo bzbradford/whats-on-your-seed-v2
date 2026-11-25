@@ -67,7 +67,7 @@ uv run python scheduled_update.py --output /tmp/out/catalog.json  # dry run (cop
 - `vite.config.js` — both build modes, `$data` alias, Vitest config
 - `.github/workflows/deploy.yaml` — CI (web: lint, check, unit, builds, e2e; pipeline: ruff, pytest) and Pages deploy from `main`
 - `.github/workflows/data-update.yml` — weekly, Mondays 06:30 America/Chicago (manual run has a `force` option): HEAD-check EPA → download only if changed → if `public/data/` changed, validate everything → commit → dispatch `deploy.yaml`. Unchanged weeks commit nothing; failures fail the job (GitHub emails) and write nothing.
-- `pipeline/scheduled_update.py` — entry point for the weekly job (its docstring explains the write rules); `sync-status.json` holds EPA's last-seen `source_headers`; `catalog.py` holds shared paths, publish/validation logic; `appril_workbook.py` parses the EPA xlsx with stdlib only
+- `pipeline/scheduled_update.py` — entry point for the weekly job (its docstring explains the write rules); `sync-status.json` holds EPA's last-seen `source_headers`; `catalog.py` holds scope/reference data, validation helpers, provider-feed `enrich()` and `publish()` (catalog assembly + loss guard vs the previous catalog); `refresh_epa.py` downloads/imports a workbook (also usable directly with `--workbook` for a local file); `appril_workbook.py` parses the EPA xlsx with stdlib only
 
 ## Gotchas
 

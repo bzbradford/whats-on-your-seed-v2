@@ -1,129 +1,46 @@
 import copy
-import json
 import pathlib
 import sys
-import tempfile
 import unittest
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
-from types import SimpleNamespace
 
-from catalog import SCOPE, connect, enrich, filter_products, publish, regno, sync
+from catalog import SCOPE, enrich, publish, regno, source_url
 from sources import parse_greenbook, parse_ppis
 
 DAY = '2026-10-16'
 
 
-def feed():
-    return {
-        'schema_version': 1,
-        'source': 'EPA APPRIL',
-        'source_url': 'https://ordspub.epa.gov/ords/pesticides/f?p=APPRIL_PUBLIC:2',
-        'complete': True,
-        'retrieved_on': DAY,
-        'query': {
-            'status_group': 'Active Products',
-            'status_date_start': None,
-            'status_date_end': DAY,
-            'sites': SCOPE['sites'],
-        },
-        'products': [
-            {
-                'registration_number': '100-123',
-                'name': 'Validation fixture — not a commercial product',
-                'registrant': 'Test',
-                'status_group': 'Active Products',
-                'status_date': '2026-01-01',
-                'sites': [{'name': SCOPE['sites'][11], 'status': 'Approved'}],
-                'ingredients_complete': True,
-                'ingredients': [{'name': 'Metalaxyl', 'percent': 25}],
-            }
-        ],
-    }
+def products():
+    """A minimal published product, as the workbook importer produces it."""
+    return [
+        {
+            'id': '100-123',
+            'registration_number': '100-123',
+            'name': 'Validation fixture — not a commercial product',
+            'registrant': 'Test',
+            'sites': [SCOPE['sites'][11]],
+            'ingredients': [{'name': 'Metalaxyl', 'percent': 25, 'cas': None, 'pc_code': None}],
+            'epa_verified': True,
+            'greenbook': None,
+        }
+    ]
 
 
 class CatalogTests(unittest.TestCase):
     def test_exact_14_sites_and_blank_start(self):
         self.assertEqual(len(SCOPE['sites']), 14)
         self.assertIsNone(SCOPE['status_date_start'])
-        f = feed()
-        f['query']['sites'] = f['query']['sites'][:-1]
-        with self.assertRaises(ValueError):
-            filter_products(f, DAY)
-
-    def test_case_whitespace_only_site_match(self):
-        f = feed()
-        f['products'][0]['sites'][0]['name'] = ' SOYBEANS   (seed treatment) '
-        good, bad = filter_products(f, DAY)
-        self.assertEqual(len(good), 1)
-        f['products'][0]['sites'][0]['name'] = 'Soybeans'
-        self.assertEqual(len(filter_products(f, DAY)[0]), 0)
-
-    def test_storage_only_excluded(self):
-        f = feed()
-        f['products'][0]['sites'] = [{'name': 'Corn (grain storage)', 'status': 'Approved'}]
-        self.assertEqual(len(filter_products(f, DAY)[0]), 0)
-
-    def test_canceled_site_not_published(self):
-        f = feed()
-        f['products'][0]['sites'][0]['status'] = 'Cancelled'
-        self.assertEqual(len(filter_products(f, DAY)[0]), 0)
-
-    def test_deltamethrin_name_synonym_and_cas(self):
-        for ai in [
-            {'name': 'Deltamethrin', 'percent': 2},
-            {'name': 'Chemical synonym', 'synonyms': ['DELTAMETHRIN'], 'percent': 2},
-            {'name': 'Chemical synonym', 'cas': '52918-63-5', 'percent': 2},
-        ]:
-            f = feed()
-            f['products'][0]['ingredients'] = [ai]
-            self.assertEqual(len(filter_products(f, DAY)[0]), 0)
-
-    def test_status_dates_not_source_dates(self):
-        f = feed()
-        f['products'][0]['status_date'] = None
-        f['products'][0]['source_updated'] = '2026-10-01'
-        self.assertEqual(len(filter_products(f, DAY)[0]), 0)
-        f['products'][0]['status_date'] = '2026-10-17'
-        self.assertEqual(len(filter_products(f, DAY)[0]), 0)
-
-    def test_partial_feed_blocked(self):
-        f = feed()
-        f['complete'] = False
-        with self.assertRaises(ValueError):
-            filter_products(f, DAY)
-
-    def test_partial_formulation_quarantined(self):
-        f = feed()
-        f['products'][0]['ingredients_complete'] = False
-        good, bad = filter_products(f, DAY)
-        self.assertFalse(good)
-        self.assertTrue(bad)
-
-    def test_duplicate_registration_aborts(self):
-        f = feed()
-        f['products'].append(copy.deepcopy(f['products'][0]))
-        with self.assertRaises(ValueError):
-            filter_products(f, DAY)
-
-    def test_stale_or_future_snapshot_aborts(self):
-        f = feed()
-        f['retrieved_on'] = '2026-10-15'
-        with self.assertRaises(ValueError):
-            filter_products(f, DAY)
 
     def test_distributor_number_preserved(self):
         self.assertEqual(regno('071532-00022-007969'), '71532-22-7969')
 
-    def test_percent_validation(self):
-        for value in [-1, 101, float('nan'), float('inf'), True]:
-            f = feed()
-            f['products'][0]['ingredients'][0]['percent'] = value
-            with self.assertRaises(ValueError):
-                filter_products(f, DAY)
+    def test_no_javascript_source_link(self):
+        with self.assertRaises(ValueError):
+            source_url('javascript:alert(1)')
 
     def test_full_number_join_and_conflict(self):
-        p, _ = filter_products(feed(), DAY)
+        p = products()
         gb = {
             'schema_version': 1,
             'source': 'Greenbook',
@@ -145,49 +62,17 @@ class CatalogTests(unittest.TestCase):
         self.assertEqual(result[0]['ingredients'][0]['percent'], 25)
         self.assertTrue(result[0]['greenbook']['warnings'])
 
-    def test_atomic_history_deletions_and_loss_guard(self):
-        with tempfile.TemporaryDirectory() as d:
-            db = connect(pathlib.Path(d) / 'db.sqlite')
-            p, _ = filter_products(feed(), DAY)
-            many = []
-            for i in range(5):
-                x = copy.deepcopy(p[0])
-                x['id'] = x['registration_number'] = '100-' + str(100 + i)
-                many.append(x)
-            publish(db, many, [], DAY, {}, False)
-            with self.assertRaises(ValueError):
-                publish(db, many[:2], [], DAY, {}, False)
-            self.assertEqual(db.execute('SELECT COUNT(*) FROM revisions').fetchone()[0], 1)
-            publish(db, many[:4], [], DAY, {}, False)
-            self.assertEqual(
-                db.execute("SELECT COUNT(*) FROM changes WHERE action='removed'").fetchone()[0], 1
-            )
-            db.close()
-
-    def test_failure_preserves_existing_output(self):
-        with tempfile.TemporaryDirectory() as d:
-            out = pathlib.Path(d) / 'catalog.json'
-            out.write_text('last good catalog')
-            code = sync(
-                SimpleNamespace(
-                    epa=None,
-                    greenbook=None,
-                    db=str(pathlib.Path(d) / 'db'),
-                    output=str(out),
-                    allow_large_change=False,
-                )
-            )
-            self.assertEqual(code, 1)
-            self.assertEqual(out.read_text(), 'last good catalog')
-            self.assertEqual(
-                json.loads((pathlib.Path(d) / 'sync-status.json').read_text())['state'], 'failed'
-            )
-
-    def test_no_javascript_source_link(self):
-        f = feed()
-        f['source_url'] = 'javascript:alert(1)'
-        with self.assertRaises(ValueError):
-            filter_products(f, DAY)
+    def test_loss_guard_against_previous_catalog(self):
+        many = []
+        for i in range(5):
+            x = copy.deepcopy(products()[0])
+            x['id'] = x['registration_number'] = '100-' + str(100 + i)
+            many.append(x)
+        previous = publish(None, many, DAY, {})
+        with self.assertRaisesRegex(ValueError, '30%'):
+            publish(previous, many[:2], DAY, {})
+        self.assertEqual(len(publish(previous, many[:2], DAY, {}, True)['products']), 2)
+        self.assertEqual(len(publish(previous, many[:4], DAY, {})['products']), 4)
 
 
 class SourceTests(unittest.TestCase):

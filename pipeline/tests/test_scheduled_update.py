@@ -14,7 +14,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 from test_workbook import fixture, record
 
 from appril_workbook import read_workbook
-from catalog import ROOT, connect, enrich, seed_published_baseline, today
+from catalog import ROOT, enrich, today
 from refresh_epa import publish_workbook
 from scheduled_update import changes_between, needs_publication, publication_reasons, run
 
@@ -237,7 +237,7 @@ class ScheduledTests(unittest.TestCase):
         path = self.root / 'epa.xlsx'
         fixture(path, [record()])
         products, audit = read_workbook(path, '2026-10-19')
-        args = SimpleNamespace(db=str(self.root / 'fresh.sqlite'), output=str(self.out))
+        args = SimpleNamespace(output=str(self.out))
         before = self.out.read_bytes()
         with self.assertRaisesRegex(ValueError, '30%'):
             publish_workbook(products, audit, args)
@@ -247,7 +247,7 @@ class ScheduledTests(unittest.TestCase):
         path = self.root / 'epa.xlsx'
         fixture(path, [record()], created='2020-01-01T00:00:00Z')
         products, audit = read_workbook(path, '2026-10-19')
-        args = SimpleNamespace(db=str(self.root / 'fresh.sqlite'), output=str(self.out))
+        args = SimpleNamespace(output=str(self.out))
         with self.assertRaisesRegex(ValueError, 'Older'):
             publish_workbook(products, audit, args)
 
@@ -265,18 +265,8 @@ class ScheduledTests(unittest.TestCase):
         self.assertEqual(before, self.out.read_bytes())
         self.assertFalse(self.out.with_name('sync-status.json').exists())
 
-    def test_invalid_baseline_does_not_disable_guard(self):
-        self.out.write_text('{"products":[]}')
-        db = connect(self.root / 'new.sqlite')
-        try:
-            with self.assertRaises(ValueError):
-                seed_published_baseline(db, self.out)
-        finally:
-            db.close()
-
     def test_scheduled_partial_provider_feed_blocks_release(self):
         args = SimpleNamespace(
-            db=str(self.root / 'db'),
             output=str(self.out),
             cdms='https://example.com/feed',
             require_complete_feeds=True,

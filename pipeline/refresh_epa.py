@@ -1,5 +1,6 @@
-"""Import an EPA workbook or download/reconcile the official APPRIL workbook.
-Failure preserves the last published catalog. Use deployment cron for unattended updates.
+"""Import an EPA workbook (local file or the official APPRIL download) into the catalog.
+Failure leaves the published catalog unchanged. For unattended updates use
+scheduled_update.py, which stages and validates through this module.
 """
 
 import argparse
@@ -12,18 +13,7 @@ import tempfile
 import urllib.request
 
 from appril_workbook import SOURCE_URL, read_workbook
-from catalog import (
-    ROOT,
-    atomic_write,
-    connect,
-    enrich,
-    now,
-    publish,
-    read_feed,
-    seed_published_baseline,
-    status_file,
-    today,
-)
+from catalog import ROOT, atomic_write, enrich, now, publish, read_feed, today
 
 
 class _NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -144,42 +134,28 @@ def publish_workbook(products, audit, args, downloaded=False):
         'audit': audit,
         'coverage_note': 'All matching Active registrations in this complete workbook, after the requested deltamethrin exclusion. This is not a claim of current EPA website parity.',
     }
-    db = connect(args.db)
-    try:
-        seed_published_baseline(db, args.output)
-        old = db.execute('SELECT payload FROM revisions ORDER BY id DESC LIMIT 1').fetchone()
-        if old:
-            prev = json.loads(old[0])
-            prevdate = prev.get('meta', {}).get('source_snapshot_date')
-            newdate = metadata['source_snapshot_date']
-            if prevdate and (not newdate or newdate < prevdate):
-                raise ValueError('Older or undated EPA workbook would replace newer source data')
-        if getattr(args, 'automation', None):
-            metadata['automation'] = args.automation
-        public = publish(
-            db,
-            products,
-            [],
-            date_end,
-            gb_status,
-            getattr(args, 'allow_large_change', False),
-            cdms_status,
-            metadata,
-            'live' if downloaded else 'snapshot',
-        )
-        atomic_write(args.output, json.dumps(public, ensure_ascii=False))
-        atomic_write(
-            pathlib.Path(args.output).with_name('epa-import-audit.json'),
-            json.dumps(audit, ensure_ascii=False, indent=2),
-        )
-        status_file(
-            args.output,
-            'success',
-            'EPA workbook imported; creation date and import date retained separately.',
-            public['meta']['last_successful_sync'],
-        )
-    finally:
-        db.close()
+    if previous:
+        prevdate = previous.get('meta', {}).get('source_snapshot_date')
+        newdate = metadata['source_snapshot_date']
+        if prevdate and (not newdate or newdate < prevdate):
+            raise ValueError('Older or undated EPA workbook would replace newer source data')
+    if getattr(args, 'automation', None):
+        metadata['automation'] = args.automation
+    public = publish(
+        previous,
+        products,
+        date_end,
+        gb_status,
+        getattr(args, 'allow_large_change', False),
+        cdms_status,
+        metadata,
+        'live' if downloaded else 'snapshot',
+    )
+    atomic_write(args.output, json.dumps(public, ensure_ascii=False))
+    atomic_write(
+        pathlib.Path(args.output).with_name('epa-import-audit.json'),
+        json.dumps(audit, ensure_ascii=False, indent=2),
+    )
     return public
 
 
@@ -190,8 +166,8 @@ def run(args):
                 args.workbook, today(), True, getattr(args, 'tracked_registrations', ())
             )
         else:
-            private = pathlib.Path(args.db).parent
-            private.mkdir(parents=True, exist_ok=True)
+            private = ROOT / 'private'
+            private.mkdir(exist_ok=True)
             with tempfile.TemporaryDirectory(prefix='epa-download-', dir=private) as d:
                 file = pathlib.Path(d) / 'apprildatadump_public.xlsx'
                 download_workbook(file)
@@ -212,19 +188,10 @@ def run(args):
         )
         return 0
     except Exception as exc:
-        db = connect(args.db)
-        with db:
-            db.execute(
-                'INSERT INTO runs(started_at,outcome,detail) VALUES(?,?,?)',
-                (now(), 'failed', str(exc)),
-            )
-        db.close()
-        status_file(
-            args.output,
-            'failed',
-            'EPA update failed. The last published catalog has been retained.',
+        print(
+            'EPA update failed; the last published catalog is unchanged: ' + str(exc),
+            file=sys.stderr,
         )
-        print('EPA update failed: ' + str(exc), file=sys.stderr)
         return 1
 
 
@@ -235,7 +202,6 @@ def main():
     )
     parser.add_argument('--greenbook', default=os.getenv('GREENBOOK_FEED_URL'))
     parser.add_argument('--cdms', default=os.getenv('CDMS_FEED_URL'))
-    parser.add_argument('--db', default=str(ROOT / 'private/catalog.sqlite'))
     parser.add_argument('--output', default=str(ROOT.parent / 'public/data/catalog.json'))
     parser.add_argument('--allow-large-change', action='store_true')
     return run(parser.parse_args())

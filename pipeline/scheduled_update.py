@@ -156,7 +156,6 @@ def run(args):
             shutil.copyfile(output, staged)
             job = SimpleNamespace(
                 workbook=None,
-                db=str(stage / 'catalog.sqlite'),
                 output=str(staged),
                 greenbook=args.greenbook,
                 cdms=args.cdms,

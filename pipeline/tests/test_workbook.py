@@ -1,4 +1,3 @@
-import json
 import pathlib
 import sys
 import tempfile
@@ -259,24 +258,18 @@ class WorkbookTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             out = pathlib.Path(d) / 'catalog.json'
             out.write_text('last valid catalog')
-            args = SimpleNamespace(
-                workbook=None, db=str(pathlib.Path(d) / 'db.sqlite'), output=str(out)
-            )
+            args = SimpleNamespace(workbook=None, output=str(out))
             with patch(
                 'refresh_epa.download_workbook', side_effect=OSError('fixture download failure')
             ):
                 self.assertEqual(run(args), 1)
             self.assertEqual(out.read_text(), 'last valid catalog')
-            self.assertEqual(
-                json.loads(out.with_name('sync-status.json').read_text())['state'], 'failed'
-            )
+            self.assertEqual(sorted(x.name for x in out.parent.iterdir()), ['catalog.json'])
 
     def test_older_workbook_cannot_replace_newer(self):
         p, a = self.parse([record()])
         with tempfile.TemporaryDirectory() as d:
-            args = SimpleNamespace(
-                db=str(pathlib.Path(d) / 'db'), output=str(pathlib.Path(d) / 'catalog.json')
-            )
+            args = SimpleNamespace(output=str(pathlib.Path(d) / 'catalog.json'))
             publish_workbook(p, a, args)
             before = pathlib.Path(args.output).read_bytes()
             a['workbook_created_at'] = '2026-08-01T00:00:00Z'
