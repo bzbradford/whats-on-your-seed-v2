@@ -8,12 +8,10 @@ _Last updated: 2026-11-25_
 - Live: https://bzbradford.github.io/whats-on-your-seed-v2/ (also `?embed` and `/whats-on-your-seed-standalone.html`). `main` still shows the bare Phase 1 product list.
 - **Phase 1 (scaffold) and Phase 2 (pipeline) done.** See PLAN.md.
 - **Phase 3 (UI port with exact visual parity): done on branch `phase-3b-ui`, not merged.** The target changed: the user's chosen look is the **Oct 19 version** of the legacy app (upstream `435c0bf`, now in `legacy/static/`, see `legacy/REFERENCE.md`), not the streamlined master UI that `phase-3-ui` ported. `phase-3b-ui` re-ports onto Oct 19 (five tabs, cream hero, sidebar filters, cards, icons, Roboto Condensed), without the hero art or any state registration UI, and with the later About/citation/disclaimer/data-currency/online-refresh features brought forward. PLAN.md Phase 3 lists every deviation, where the brought-forward content sits, and the Oct 19 oddities kept on purpose.
-- Tests: 143 Vitest unit tests; 50 Playwright tests, including 23 Oct 19-vs-new screenshot comparisons (desktop and mobile), all at 0 differing pixels.
-- `phase-3-ui` (master-era target) is superseded by `phase-3b-ui`; keep it only for reference.
+- Tests: Vitest unit tests and Playwright behaviour tests. The 23 Oct 19-vs-new screenshot comparisons (all at 0 px) were retired after the user signed off on the look.
 
 ## Next
 
-1. **Decide the data-job change** (PLAN.md Phase 3, "Pending"): keep the parity spec out of `data-update.yml` with a `test:e2e:data` script (`--grep-invert parity`). An agent edit was blocked by the permission classifier, so it needs you.
 2. Review `phase-3b-ui` against the reference (`python3 legacy/serve.py --port 8081 --no-browser`) and merge it (agents don't open PRs or merge).
 3. Decide the open items in PLAN.md: hero spacing without the art, master-era abbreviations guide and print buttons (not brought forward), the Oct 19 oddities list (e.g. Treatment guide overflows sideways at 390 px).
 4. Phase 4: compact `?embed` layout tested in a cross-origin iframe; accessibility pass; then design iteration (retire or update the parity test).
@@ -21,7 +19,7 @@ _Last updated: 2026-11-25_
 
 ## Things to know
 
-- **Weekly data job** (`data-update.yml`, Mondays 06:30 Central): most weeks it finishes in seconds and commits nothing. When it commits, it's as github-actions[bot] with a summary like "Update catalog from EPA: … (2 added, 1 changed, 0 removed)", then it redeploys Pages. Run `git pull` before working. Its validation runs `pnpm test:e2e`, which currently includes the parity tests against `legacy/` (both apps get the same new data, so they should keep matching; see the pending data-job decision above).
+- **Weekly data job** (`data-update.yml`, Mondays 06:30 Central): most weeks it finishes in seconds and commits nothing. When it commits, it's as github-actions[bot] with a summary like "Update catalog from EPA: … (2 added, 1 changed, 0 removed)", then it redeploys Pages. Run `git pull` before working. Its validation runs `pnpm test:e2e` (behaviour tests only; the screenshot comparisons are gone).
 - `pnpm test:e2e` builds both targets and starts two servers: `vite preview` (4173) and `python3 legacy/serve.py` (8081). Parity images, diffs and pixel counts land in `test-results/<test>/` (`*-legacy.png`, `*-current.png`, `*-diff.png`, `*-diff.txt`).
 - Styling is the verbatim Oct 19 CSS (`src/styles/legacy.css`); keep DOM/class names as they are until parity is signed off. See CLAUDE.md "Conventions" and "Gotchas" (Svelte whitespace/text-node pitfalls).
 - Catalog split was deferred: Pages serves the 2.8 MB catalog gzipped at ~287 KB. Reasoning in PLAN.md Phase 2.
