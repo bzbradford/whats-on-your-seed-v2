@@ -472,6 +472,18 @@ test.describe('mobile', () => {
     );
   });
 
+  for (const width of [390, 320])
+    test(`no tab scrolls sideways at ${width}px`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 844 });
+      for (const tab of ['products', 'matrix', 'ingredients', 'guide', 'data']) {
+        await page.locator(`#tab-${tab}`).click();
+        expect(
+          await page.evaluate(() => document.documentElement.scrollWidth),
+          `${tab} tab page width`,
+        ).toBeLessThanOrEqual(width);
+      }
+    });
+
   test('respects reduced motion', async ({ page }) => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     expect(

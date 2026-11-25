@@ -125,3 +125,22 @@
     </article>
   </div>
 {/if}
+
+<style>
+  /*
+   * Oct 19 used `1fr` tracks, whose minimum is the content's min-content width, so the
+   * 650px guide tables pushed the page sideways on phones. Let the tracks and panels
+   * shrink; the tables scroll inside their .table-scroll wrappers.
+   */
+  .guide-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .guide-grid > :global(*) {
+    min-width: 0;
+  }
+  @media (max-width: 700px) {
+    .guide-grid {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+</style>
