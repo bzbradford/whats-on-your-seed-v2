@@ -105,3 +105,12 @@ Taken from the legacy `static/index.html`. Tick items when ported **and** tested
 - Embed mode: query param vs separate `embed.html` entry (leaning query param, one build)
 - Catalog size strategy (see Phase 2)
 - What to do about fact sheet generation (`build_fact_sheet.py`, reportlab)
+
+## Open decisions: update job design (2026-11-25)
+
+Under review. The job runs weekly as a stopgap; it was daily in the legacy setup.
+
+- EPA's 98.5 MB workbook sends `Last-Modified`/`ETag` headers and was last modified 2026-09-22. A conditional request could skip the download when nothing changed.
+- 30 of upstream's 33 bot commits changed only timestamps in `sync-status.json`. Proposal: commit only when the catalog content changes.
+- If check-only runs no longer commit, the legacy "last EPA check" display and 48-hour staleness warning need a different approach.
+- The SQLite history (kept as a 90-day Actions artifact) may be redundant with git history of `catalog.json` once commits are change-only. Needs a closer look at what `record_store.py` tracks.

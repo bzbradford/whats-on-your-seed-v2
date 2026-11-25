@@ -1,11 +1,11 @@
 name: Data update
 
-# Daily: download the EPA APPRIL workbook, reconcile it into the retained SQLite
+# Weekly: download the EPA APPRIL workbook, reconcile it into the retained SQLite
 # history, validate, commit public/data/, and redeploy Pages.
 
 on:
   schedule:
-    - cron: '37 6 * * *'
+    - cron: '37 6 * * 1' # Mondays
       timezone: America/Chicago
   workflow_dispatch:
 

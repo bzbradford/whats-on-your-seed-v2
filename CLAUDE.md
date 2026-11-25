@@ -65,7 +65,7 @@ uv run python scheduled_update.py --db /tmp/x.sqlite --output /tmp/out/catalog.j
 - `src/lib/types.ts` — catalog types (partial; grow as features are ported)
 - `vite.config.js` — both build modes, `$data` alias, Vitest config
 - `.github/workflows/deploy.yaml` — CI (web: lint, check, unit, builds, e2e; pipeline: ruff, pytest) and Pages deploy from `main`
-- `.github/workflows/data-update.yml` — daily 06:37 America/Chicago: refresh from EPA → validate everything → commit `public/data/` → dispatch `deploy.yaml`. SQLite history persists between runs as the `seed-catalog-sqlite` Actions artifact (90-day retention).
+- `.github/workflows/data-update.yml` — weekly, Mondays 06:37 America/Chicago: refresh from EPA → validate everything → commit `public/data/` → dispatch `deploy.yaml`. SQLite history persists between runs as the `seed-catalog-sqlite` Actions artifact (90-day retention).
 - `pipeline/scheduled_update.py` — entry point for the daily job; `catalog.py` holds shared paths, publish/validation logic; `appril_workbook.py` parses the EPA xlsx with stdlib only
 
 ## Gotchas
