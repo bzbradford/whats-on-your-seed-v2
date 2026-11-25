@@ -7,9 +7,9 @@ import urllib.request, urllib.parse
 from zoneinfo import ZoneInfo
 
 ROOT = pathlib.Path(__file__).resolve().parent
-SCOPE = json.loads((ROOT/'data/scope.json').read_text(encoding='utf-8'))
-INGREDIENTS = json.loads((ROOT/'data/ingredients.json').read_text(encoding='utf-8'))
-EDUCATION = json.loads((ROOT/'data/education.json').read_text(encoding='utf-8'))
+SCOPE = json.loads((ROOT/'reference/scope.json').read_text(encoding='utf-8'))
+INGREDIENTS = json.loads((ROOT/'reference/ingredients.json').read_text(encoding='utf-8'))
+EDUCATION = json.loads((ROOT/'reference/education.json').read_text(encoding='utf-8'))
 MAX_BYTES = 100 * 1024 * 1024
 
 
@@ -346,7 +346,7 @@ def main():
     parser.add_argument('--greenbook', default=os.getenv('GREENBOOK_FEED_URL'), help='Normalized Greenbook JSON file or approved feed URL')
     parser.add_argument('--cdms', default=os.getenv('CDMS_FEED_URL'), help='Normalized authorized CDMS/TELUS feed URL or JSON file')
     parser.add_argument('--db', default=str(ROOT/'private/catalog.sqlite'))
-    parser.add_argument('--output', default=str(ROOT/'static/catalog.json'))
+    parser.add_argument('--output', default=str(ROOT.parent/'public/data/catalog.json'))
     parser.add_argument('--allow-large-change', action='store_true')
     args = parser.parse_args()
     return sync(args)

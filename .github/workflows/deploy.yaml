@@ -68,10 +68,28 @@ jobs:
         with:
           path: './dist'
 
+  pipeline:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: pipeline
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v10
+
+      - name: Lint
+        run: uv run ruff check . && uv run ruff format --check .
+
+      - name: Tests (includes checks on the committed catalog)
+        run: uv run pytest -q
+
   deploy:
     # Only deploy from main; PRs stop after the build job.
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
-    needs: build
+    needs: [build, pipeline]
     runs-on: ubuntu-latest
     permissions:
       pages: write

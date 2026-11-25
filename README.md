@@ -1,118 +1,36 @@
-# Crop Protection Network — Seed Treatment Database
+# What's on Your Seed? v2
 
-Start with **[seed-treatment-database](seed-treatment-database/)**. This is the database prepared in this project, including **880 active EPA registrations** from the supplied workbook, exact filters for the 14 requested sites, ingredient details, comparison, CSV export, and the EPA workbook updater.
+A searchable database of EPA-registered field crop seed treatments for the [Crop Protection Network](https://cropprotectionnetwork.org/). The data is updated automatically every day from EPA's APPRIL database.
 
-The included catalog has **880 active EPA registrations**. EPA's official APPRIL workbook was downloaded and validated on **October 30, 2026** and matches the existing workbook: no product records changed. Its creation metadata remains **September 21, 2026**, which is not a verified current-through date. New HTML downloads check the validated GitHub catalog online and retain an embedded snapshot offline. Six known deltamethrin records are excluded. Two formulations and one percentage are missing and visibly flagged. Greenbook/CDMS references are saved observations, not active data feeds.
+**Live site:** https://bzbradford.github.io/whats-on-your-seed-v2/
 
-## Side-by-side comparison matrix
+- Compact layout for embedding in an iframe: [`?embed`](https://bzbradford.github.io/whats-on-your-seed-v2/?embed)
+- Offline single-file version: [whats-on-your-seed-standalone.html](https://bzbradford.github.io/whats-on-your-seed-v2/whats-on-your-seed-standalone.html)
 
-Open **Compare** to select up to four formulations. Compare first-registration/status/label dates, ingredients, FRAC/IRAC codes, target pests, label specifications, warnings, and source links. Search and add directly in this tab, or use the product-list Compare checkboxes. Export the selected matrix to CSV or use Print / Save PDF. Efficacy is excluded.
+> **Work in progress.** This is a rebuild, as a maintainable Svelte app, of a seed treatment database originally developed in [danieham-97/crop-protection-network](https://github.com/danieham-97/crop-protection-network). Until the port is complete, the original app is kept unchanged in [`legacy/`](legacy/) as the reference. See [PLAN.md](PLAN.md) for progress.
 
-First-registration dates and EPA pest indexes now come from the workbook. Crop-specific label extracts cover two registrations; unreviewed details stay explicitly marked. [How to use the matrix and interpret its sources](seed-treatment-database/COMPARISON_MATRIX.md).
+## How it works
 
-## Testing and CPN developer handoff
+1. **Pipeline** ([`pipeline/`](pipeline/), Python). A daily GitHub Actions job ([`data-update.yml`](.github/workflows/data-update.yml)) downloads EPA's APPRIL workbook, keeps the 14 seed-treatment sites in scope, reconciles changes against a retained SQLite history, and writes validated JSON to [`public/data/`](public/data/).
+2. **Web app** (Svelte, at the repo root). The app loads that JSON. It is built and deployed to GitHub Pages on every push to `main` and after each data update.
 
-Use [CPN_DEVELOPER_HANDOFF.md](seed-treatment-database/CPN_DEVELOPER_HANDOFF.md) for the owner acceptance checklist, staging deployment, live-source verification, scheduled updates, and release responsibilities.
+There is no server: everything is static files.
 
-## Open it immediately — no installation
+## Development
 
-1. On this repository page, select **Code → Download ZIP**.
-2. In Windows, right-click the downloaded ZIP and select **Extract All**.
-3. Open the extracted folder, then open **seed-treatment-database**.
-4. Double-click **CPN_Seed_Treatment_Preview.html**. It opens immediately with the embedded catalog, then checks GitHub for the latest validated catalog. It checks again every five minutes while open; without internet it keeps the embedded snapshot.
+Requires Node 24+ with pnpm, and [uv](https://docs.astral.sh/uv/) for the pipeline.
 
-Use the downloaded file to open the interface. GitHub's file page displays HTML source code rather than running the application. The retained “Preview” filename contains the actual imported catalog, not fictional examples.
+```bash
+pnpm install
+pnpm dev                 # local dev server
+pnpm verify              # lint, type check, unit tests, both builds
+pnpm test:e2e            # browser tests (first time: pnpm exec playwright install chromium)
 
-The interface includes the supplied CPN logo, its green/lime/yellow palette, and matching sans-serif styling. The standalone HTML embeds its logo and heading font for offline use. Roboto Condensed is an approximation pending CPN's exact font specification; see [appearance details](seed-treatment-database/BRANDING.md).
-
-## Treatment comparison and warnings
-
-Open **Guides & sources** for a comparison of five treatment types, FRAC/IRAC guidance, EPA signal words and BMPs. [Download the three-page fact sheet](seed-treatment-database/static/assets/CPN_Seed_Treatment_Comparison.pdf), or expand **Guide references & review dates** inside that tab. The standalone HTML includes the PDF for offline use.
-
-New filters and comparison/export fields show FRAC fungicide groups, IRAC insecticide groups, EPA signal words and restricted-use flags. The reviewed reference covers 68 distinct ingredient codes; unmapped ingredients remain unclassified. Product-specific label precautions still require current-label review. [Coverage and update details](seed-treatment-database/SAFETY_AND_GROUPS.md).
-
-## Registration and source-data limitations
-
-The catalog reports federal EPA registration information from the identified APPRIL export. **Federal registration does not establish state approval or confirm that a particular use is permitted.** The tool does not provide state-registration or provider-availability data, state filters, or a state-data update feed. Verify the exact product, current container label, seed tag, and applicable registration and use requirements before use.
-
-Source-check, import, workbook-creation, registration-status, and label dates describe different events; they do not guarantee that every field is current. The EPA pest index is product-wide, not a crop-specific use authorization. Missing or unreviewed information remains explicitly flagged. Saved Greenbook/CDMS references are supporting observations, not live feeds or approval determinations. See [source and label limitations](seed-treatment-database/README.md#use-the-database) and [comparison evidence and missing data](seed-treatment-database/COMPARISON_MATRIX.md#evidence-and-missing-data).
-
-## Try these checks
-
-| Check | Expected result for the included snapshot |
-| --- | --- |
-| Open the database | 880 products total; 25 on the first page |
-| Search `100-1508` | Cruisermaxx Vibrance; four EPA active ingredients |
-| Reset, then select Barley (seed treatment) | 299 matching registrations |
-| Select Related base formulation under Ingredient data | 185 distributor records |
-| Select two products and choose Compare | Side-by-side ingredients and source information |
-| Export results | All filtered products, including results on other pages |
-| Filter EPA signal word to None reported by EPA | 25 records; distinct from the 187 missing signal words |
-| Filter EPA restricted-use flag to Yes | 19 records in the supplied workbook |
-| Open Guides & sources | Comparison, signal words, BMPs and downloadable PDF |
-| In Guides & sources, expand Sources, coverage & updates | Source date, import date, 14-site counts, and update status |
-
-Product counts can change after an intentional import of a newer workbook.
-
-## Run the hosted-style version locally
-
-Install **Python 3.11 or newer** from https://www.python.org/downloads/ . No Python installation is needed for the immediate HTML preview above.
-
-On Windows, double-click **START_DATABASE.bat** in the repository's outer folder. It starts a local server and opens the browser. Keep its command window open; press **Ctrl+C** in that window to stop the server.
-
-Alternatively, open a terminal in the repository's outer folder:
-
-```powershell
-# Windows
-py seed-treatment-database/serve.py
+cd pipeline
+uv run pytest            # pipeline tests, including checks on the committed catalog
+uv run python scheduled_update.py --db private/catalog.sqlite   # a real update from EPA
 ```
 
-```sh
-# macOS / Linux
-python3 seed-treatment-database/serve.py
-```
+## Limitations
 
-Open **http://127.0.0.1:8080** if the browser does not open automatically. If port 8080 is already in use, add `--port 8081` and use the displayed address. This server exposes only the application's static files and runs on your computer. It does not activate source collection or publish a CPN website.
-
-## Run automated tests
-
-On Windows, double-click **TEST_DATABASE.bat**, or run:
-
-```powershell
-py seed-treatment-database/test_project.py
-```
-
-On macOS/Linux:
-
-```sh
-python3 seed-treatment-database/test_project.py
-```
-
-This runs the Python importer/publication tests and rebuilds the standalone preview. If **Node.js 22 or newer** is installed, it also runs the JavaScript interface-logic tests. The test runner reports a clear skip when Node is absent. Node is only required for JavaScript development tests, not to open the tool.
-
-The GitHub **Actions → Seed database tests** workflow runs the full Python and JavaScript checks on pushes and pull requests. To start a run manually, select that workflow, then **Run workflow**. A green check means the automated checks passed. These checks do not fetch new EPA data or prove live provider access.
-
-Optional real-browser testing instructions are in [TESTING.md](seed-treatment-database/TESTING.md). The mocked-DOM checks do not substitute for browser/accessibility review.
-
-## EPA updates and CPN hosting
-
-The Python worker is scheduled in GitHub Actions daily at 6:37 a.m. America/Chicago. It downloads the complete EPA workbook, upserts added or changed records into SQLite, and publishes validated JSON for the tool. For an alternative network-enabled host:
-
-```sh
-cd seed-treatment-database
-python3 scheduled_update.py --db private/catalog.sqlite
-python3 build_preview.py
-```
-
-For a workbook already on your computer, use `--workbook /path/to/apprildatadump_public.xlsx` (Windows: `py refresh_epa.py --workbook "C:\path\apprildatadump_public.xlsx"`). This changes the local catalog; it does not automatically commit the data to GitHub.
-
-See [EPA worker setup](seed-treatment-database/WEEKLY_WORKER.md) and [source update runs](https://github.com/danieham-97/crop-protection-network/actions/workflows/seed-database-update.yml). GitHub retains SQLite between successful runs as an Actions artifact. The alternative host cron job is not installed by uploading this repository. Live Greenbook and CDMS updates still require supported feeds and configuration. The project does not publish a GitHub Pages site or replace the existing CPN website by itself.
-
-Deployment details: [integration guide](seed-treatment-database/INTEGRATION.md), [project README](seed-treatment-database/README.md), [source references](seed-treatment-database/SOURCES.md), and [validation record](seed-treatment-database/VALIDATION.md).
-
-## Repository layout
-
-- `seed-treatment-database/`: imported EPA database, interface, updater and tests. **Use this folder for the instructions above.**
-- `.github/workflows/seed-database-tests.yml`: automated checks for the imported database.
-
-Only the selected public EPA catalog and reviewed reference links are committed. Original bulk workbooks, private SQLite histories, credentials and local test output are excluded by ignore rules. No open-source license or CPN endorsement is asserted by this repository.
+The catalog reports federal EPA registration information. Federal registration does not establish state approval or confirm that a particular use is permitted. Always check the current product label, seed tag, and state requirements.

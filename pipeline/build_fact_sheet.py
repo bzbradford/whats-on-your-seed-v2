@@ -10,11 +10,11 @@ from reportlab.platypus import SimpleDocTemplate,Paragraph,Spacer,Table,TableSty
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 ROOT=pathlib.Path(__file__).resolve().parent
-ED=json.loads((ROOT/'data/education.json').read_text())
-REF=json.loads((ROOT/'data/ingredients.json').read_text())
-OUT=ROOT/'static/assets/CPN_Seed_Treatment_Comparison.pdf'
+ED=json.loads((ROOT/'reference/education.json').read_text())
+REF=json.loads((ROOT/'reference/ingredients.json').read_text())
+OUT=ROOT.parent/'public/assets/CPN_Seed_Treatment_Comparison.pdf'
 GREEN=colors.HexColor('#0B6623');INK=colors.HexColor('#203527');MUTED=colors.HexColor('#536258');LIME=colors.HexColor('#A7C339')
-pdfmetrics.registerFont(TTFont('CPNHeading',str(ROOT/'static/assets/roboto-condensed.ttf')))
+pdfmetrics.registerFont(TTFont('CPNHeading',str(ROOT.parent/'src/assets/roboto-condensed.ttf')))
 styles={
  'body':ParagraphStyle('body',fontName='Helvetica',fontSize=9,leading=12,textColor=INK,spaceAfter=7),
  'small':ParagraphStyle('small',fontName='Helvetica',fontSize=8,leading=10.5,textColor=MUTED,spaceAfter=5),
@@ -38,7 +38,7 @@ def links(ids):
  return p('Sources: '+'<br/>'.join(values),'small',True)
 def page(canvas,doc):
  canvas.saveState()
- canvas.drawImage(str(ROOT/'static/assets/cpn-logo-2022.png'),42,714,width=165,height=66.2,mask='auto')
+ canvas.drawImage(str(ROOT.parent/'src/assets/cpn-logo-2022.png'),42,714,width=165,height=66.2,mask='auto')
  canvas.setFont('Helvetica',8);canvas.setFillColor(MUTED)
  canvas.drawRightString(570,755,'SEED TREATMENT REFERENCE')
  canvas.drawRightString(570,741,'Educational draft for CPN review')

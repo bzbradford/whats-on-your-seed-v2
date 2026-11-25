@@ -1,6 +1,6 @@
 # Conversion plan
 
-Goal: rebuild the legacy monolithic `seed-treatment-database/static/index.html` (~125 KB, one inline script, ~60 functions) as a maintainable, tested Svelte app deployable to GitHub Pages, while keeping the automated EPA APPRIL pipeline.
+Goal: rebuild the legacy monolithic `legacy/static/index.html` (~125 KB, one inline script, ~60 functions) as a maintainable, tested Svelte app deployable to GitHub Pages, while keeping the automated EPA APPRIL pipeline.
 
 ## Phases
 
@@ -25,28 +25,38 @@ Goal: rebuild the legacy monolithic `seed-treatment-database/static/index.html` 
 
 ### 2. Pipeline
 
-- [ ] Move Python to `pipeline/` with `pyproject.toml` (uv), port unittest → pytest, add ruff
-- [ ] Point pipeline output at `public/data/` (committed) and delete `scripts/sync-data.js`; update the update workflow
-- [ ] Repoint `PUBLISHED_DATA_URL` (currently danieham-97 raw GitHub) to our Pages URL
-- [ ] Decide on catalog slimming (2.8 MB; `target_pests_raw` is large); maybe split into a list index + lazy-loaded details
-- [ ] TypeScript types for the catalog schema (generated or hand-written, checked against the fixture)
-- [ ] Enable Actions on the fork only once output paths are final
+- [x] Move Python to `pipeline/` with `pyproject.toml` (uv, Python 3.12), unittest suite runs under pytest, ruff format + lint
+- [x] Reference inputs moved `data/` → `pipeline/reference/`; output goes to committed `public/data/`; `scripts/sync-data.js` removed
+- [x] Legacy app frozen under `legacy/` (with its own catalog snapshot) as the parity reference
+- [x] `data-update.yml` (replaces `seed-database-update.yml`): daily refresh → pytest + `pnpm verify` + e2e → commit `public/data/` → dispatch Pages deploy (GITHUB_TOKEN pushes don't trigger workflows)
+- [x] CI runs the pipeline job (ruff + pytest) alongside the web build; deploy needs both
+- [ ] First manual `data-update` run succeeds on GitHub
+- **Catalog split: deferred.** The 2.8 MB file is ~287 KB gzipped as served by Pages. Moving `target_pests_raw` (used only by the comparison matrix) to a lazy file would cut that to ~126 KB, but adds lazy-loading to compare, CSV export and the standalone build. Revisit after parity if load time matters.
 
-### 3. Port features (logic → `src/lib/*.ts` with Vitest; UI → components; Playwright per flow)
+### 3. Port the UI with exact visual parity
 
-See the inventory below. Port order: catalog load → product list/search/filters/pager → product detail dialog → comparison matrix → ingredient guide → guides & sources → exports/print → sync/update status.
+The legacy look and behaviour are the target: replicate first, iterate after.
+
+- [ ] Lift the legacy `<style>` verbatim into `src/styles/legacy.css` (global) and keep its class names and DOM structure in the Svelte components. Tailwind stays available but nothing is restyled until parity is reached.
+- [ ] Assets: Roboto Condensed font, CPN logo, hero images, fact sheet PDF (in `src/assets` / `public/assets`; standalone must inline what it needs)
+- [ ] Visual parity tests: Playwright serves `legacy/static/` and the new app side by side on the same catalog snapshot and compares screenshots of key states at desktop and mobile widths
+- [ ] Port the legacy `.cjs` logic/UI test cases (`legacy/tests/`) to Vitest/Playwright as each feature lands
+- [ ] Full TypeScript types for the catalog schema, checked against the pipeline test fixture
+- [ ] Standalone build polls the published Pages `data/catalog.json` (legacy pointed at danieham-97's raw GitHub URL)
+
+Port order: catalog load → shell/header/tabs → product list/search/filters/pager → product detail dialog → comparison matrix → ingredient guide → guides & sources → exports/print → sync/update status. Feature checklist below.
 
 ### 4. Embed and polish
 
 - [ ] Compact embed layout (`?embed`), test inside an iframe on a page from a different origin
 - [ ] Accessibility pass (the legacy app has live regions `a11y-alert`/`a11y-status`, focus restore)
-- [ ] Branding (CPN palette, Roboto Condensed, logo) — see legacy `BRANDING.md`
-- [ ] Prune or consolidate the ~15 legacy markdown docs; rewrite README
+- [ ] Iterate on design beyond the legacy look (only after parity)
+- [ ] Prune or consolidate the ~15 legacy markdown docs
 
 ### 5. Cutover
 
-- [ ] Parity check against the legacy app using the README's "Try these checks" table
-- [ ] Delete legacy `static/index.html`, preview builders, `.bat` files, `.cjs` tests
+- [ ] Parity check against the legacy app using the "Try these checks" table in `legacy/README-upstream.md`
+- [ ] Delete `legacy/` (keep anything still useful from its docs)
 
 ## Feature inventory (parity checklist)
 

@@ -12,9 +12,9 @@ ROOT=pathlib.Path(__file__).resolve().parents[1]
 class PublishedCatalogTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.catalog=json.loads((ROOT/'static/catalog.json').read_text(encoding='utf-8'))
+        cls.catalog=json.loads((ROOT.parent/'public/data/catalog.json').read_text(encoding='utf-8'))
         cls.products=cls.catalog['products']
-        cls.audit=json.loads((ROOT/'static/epa-import-audit.json').read_text(encoding='utf-8'))
+        cls.audit=json.loads((ROOT.parent/'public/data/epa-import-audit.json').read_text(encoding='utf-8'))
 
     def test_census_and_site_counts_reconcile(self):
         ids=[p['id'] for p in self.products]
@@ -80,9 +80,9 @@ class PublishedCatalogTests(unittest.TestCase):
             self.assertTrue(r['composition']);self.assertTrue(r['source_url'].startswith('https://www3.epa.gov/'))
 
     def test_classification_sources_and_published_guide(self):
-        refs=json.loads((ROOT/'data/ingredients.json').read_text())
+        refs=json.loads((ROOT/'reference/ingredients.json').read_text())
         self.assertEqual(self.catalog['ingredient_reference'],refs)
-        self.assertEqual(self.catalog['education'],json.loads((ROOT/'data/education.json').read_text()))
+        self.assertEqual(self.catalog['education'],json.loads((ROOT/'reference/education.json').read_text()))
         for key,r in refs.items():
             self.assertEqual(key,' '.join(key.lower().split()))
             scheme='FRAC' if r.get('frac_code') else 'IRAC'

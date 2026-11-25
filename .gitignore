@@ -4,9 +4,6 @@ dist
 dist-standalone
 *.local
 
-# Generated data copied into the app (see scripts/sync-data.js)
-public/data/
-
 # Test output
 test-results/
 playwright-report/

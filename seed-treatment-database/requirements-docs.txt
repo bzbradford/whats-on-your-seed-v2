@@ -1,2 +1,0 @@
-# Only needed to regenerate the printable fact sheet; not needed to run the app.
-reportlab>=4.0,<5

@@ -1,0 +1,128 @@
+name: Data update
+
+# Daily: download the EPA APPRIL workbook, reconcile it into the retained SQLite
+# history, validate, commit public/data/, and redeploy Pages.
+
+on:
+  schedule:
+    - cron: '37 6 * * *'
+      timezone: America/Chicago
+  workflow_dispatch:
+
+permissions:
+  contents: write # commit public/data/
+  actions: write # read the SQLite artifact; dispatch the Pages deploy
+
+concurrency:
+  group: data-update
+  cancel-in-progress: false
+
+defaults:
+  run:
+    working-directory: pipeline
+
+jobs:
+  update:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+
+      - uses: astral-sh/setup-uv@v10
+
+      - name: Validate the current pipeline
+        run: uv run pytest -q
+
+      - name: Restore the last SQLite database
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p private
+          RUN_ID=$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=seed-catalog-sqlite&per_page=100" --jq '[.artifacts[] | select(.expired == false and .workflow_run.head_branch == "main")] | sort_by(.created_at) | reverse | .[0].workflow_run.id // empty')
+          if [ -n "$RUN_ID" ]; then
+            gh run download "$RUN_ID" --repo "$GITHUB_REPOSITORY" --name seed-catalog-sqlite --dir private
+          else
+            echo 'No retained database artifact. The worker will initialize from the published catalog.'
+          fi
+
+      - name: Download, validate and reconcile sources
+        id: refresh
+        continue-on-error: true
+        env:
+          GREENBOOK_FEED_URL: ${{ secrets.GREENBOOK_FEED_URL }}
+          GREENBOOK_FEED_TOKEN: ${{ secrets.GREENBOOK_FEED_TOKEN }}
+          CDMS_FEED_URL: ${{ secrets.CDMS_FEED_URL }}
+          CDMS_FEED_TOKEN: ${{ secrets.CDMS_FEED_TOKEN }}
+          STATE_REGISTRATION_FEED_URL: ${{ secrets.STATE_REGISTRATION_FEED_URL }}
+        run: uv run python scheduled_update.py --db private/catalog.sqlite
+
+      # Validate the new data against the pipeline tests and the full web app
+      # (unit, build, e2e) before anything is published.
+      - name: Validate updated catalog
+        if: steps.refresh.outcome == 'success'
+        run: uv run pytest -q
+
+      - uses: pnpm/action-setup@v6
+        if: steps.refresh.outcome == 'success'
+
+      - uses: actions/setup-node@v7
+        if: steps.refresh.outcome == 'success'
+        with:
+          node-version: 24
+          cache: 'pnpm'
+
+      - name: Check the web app with the updated catalog
+        if: steps.refresh.outcome == 'success'
+        working-directory: .
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm verify
+          pnpm exec playwright install --with-deps chromium
+          pnpm test:e2e
+
+      - name: Publish catalog or failure status
+        id: publish
+        if: success() && steps.refresh.outcome != 'skipped'
+        working-directory: .
+        env:
+          REFRESH_OUTCOME: ${{ steps.refresh.outcome }}
+        run: |
+          if [ "$REFRESH_OUTCOME" = "success" ]; then
+            git add public/data/
+          else
+            git add public/data/sync-status.json
+          fi
+          if git diff --cached --quiet; then
+            echo 'No data changes to publish.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Update seed database sources and check status'
+          # A concurrent edit makes this ordinary push fail, rather than overwriting it.
+          git push origin HEAD:main
+          echo 'pushed=true' >> "$GITHUB_OUTPUT"
+
+      # Pushes made with GITHUB_TOKEN don't trigger other workflows, but
+      # workflow_dispatch does, so redeploy explicitly.
+      - name: Redeploy Pages
+        if: steps.publish.outputs.pushed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run deploy.yaml --ref main
+
+      - name: Retain the SQLite database for the next run
+        if: steps.refresh.outcome == 'success'
+        uses: actions/upload-artifact@v7
+        with:
+          name: seed-catalog-sqlite
+          path: pipeline/private/catalog.sqlite
+          retention-days: 90
+          if-no-files-found: error
+          overwrite: true
+
+      - name: Mark a failed source check
+        if: steps.refresh.outcome == 'failure'
+        run: exit 1

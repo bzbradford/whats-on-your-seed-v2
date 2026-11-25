@@ -4,7 +4,9 @@ dist-standalone/
 public/data/
 test-results/
 playwright-report/
-# Legacy app and pipeline: left as-is until ported
-seed-treatment-database/
-# Upstream-authored docs
-README.md
+# Legacy reference app: frozen, not formatted
+legacy/
+# Python pipeline: formatted by ruff
+pipeline/
+# Generated fact sheet
+public/assets/

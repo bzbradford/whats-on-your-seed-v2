@@ -22,7 +22,7 @@ def download_workbook(destination):
 
 def reference_links(products,previous=None):
     """Retain reviewed exact-number links, preserving original observation dates."""
-    path=ROOT/'data/source-references.json'
+    path=ROOT/'reference/source-references.json'
     if not path.exists():return {'Greenbook':0,'CDMS':0}
     refs=json.loads(path.read_text(encoding='utf-8'));counts={'Greenbook':0,'CDMS':0}
     for old in (previous or {}).get('products',[]):
@@ -104,7 +104,7 @@ def main():
     parser.add_argument('--greenbook',default=os.getenv('GREENBOOK_FEED_URL'))
     parser.add_argument('--cdms',default=os.getenv('CDMS_FEED_URL'))
     parser.add_argument('--db',default=str(ROOT/'private/catalog.sqlite'))
-    parser.add_argument('--output',default=str(ROOT/'static/catalog.json'))
+    parser.add_argument('--output',default=str(ROOT.parent/'public/data/catalog.json'))
     parser.add_argument('--allow-large-change',action='store_true')
     return run(parser.parse_args())
 

@@ -5,10 +5,9 @@
   "type": "module",
   "scripts": {
     "prepare": "simple-git-hooks",
-    "sync-data": "node scripts/sync-data.js",
-    "dev": "pnpm sync-data && vite",
-    "build": "pnpm sync-data && vite build",
-    "build:standalone": "pnpm sync-data && vite build --mode standalone",
+    "dev": "vite",
+    "build": "vite build",
+    "build:standalone": "vite build --mode standalone",
     "preview": "vite preview",
     "check": "svelte-check --diagnostic-sources js,svelte --fail-on-warnings",
     "lint": "prettier --check . && eslint .",

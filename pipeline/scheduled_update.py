@@ -17,7 +17,7 @@ from catalog import ROOT, atomic_write, now, product_facts, source_url
 from refresh_epa import run as refresh
 from record_store import tracked_registrations, upsert_catalog
 
-WORKFLOW='https://github.com/danieham-97/crop-protection-network/actions/workflows/seed-database-update.yml'
+WORKFLOW='https://github.com/bzbradford/whats-on-your-seed-v2/actions/workflows/data-update.yml'
 SCHEDULE={'kind':'GitHub Actions','cron':'37 6 * * *','timezone':'America/Chicago','workflow_url':WORKFLOW}
 AUTOMATION='GitHub Actions: daily at 06:37 America/Chicago; checks for new EPA weekly exports'
 
@@ -150,7 +150,7 @@ def run(args):
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--output',default=str(ROOT/'static/catalog.json'))
+    parser.add_argument('--output',default=str(ROOT.parent/'public/data/catalog.json'))
     parser.add_argument('--db',default=os.getenv('CPN_SEED_DB') or str(ROOT/'private/catalog.sqlite'),help='Persistent SQLite database outside the public web directory')
     parser.add_argument('--greenbook',default=os.getenv('GREENBOOK_FEED_URL') or None)
     parser.add_argument('--cdms',default=os.getenv('CDMS_FEED_URL') or None)

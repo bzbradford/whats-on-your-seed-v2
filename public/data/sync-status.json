@@ -1,0 +1,48 @@
+{
+  "state": "success",
+  "outcome": "unchanged",
+  "publication_reasons": [],
+  "checked_at": "2026-11-24T22:43:52.429062+00:00",
+  "last_successful_sync": "2026-11-24T22:43:52.429062+00:00",
+  "last_publication_at": "2026-10-30T14:41:41.372337+00:00",
+  "message": "Sources checked; no new data. Published catalog unchanged.",
+  "scheduler": {
+    "kind": "GitHub Actions",
+    "cron": "37 6 * * *",
+    "timezone": "America/Chicago",
+    "workflow_url": "https://github.com/danieham-97/crop-protection-network/actions/workflows/seed-database-update.yml"
+  },
+  "sources": {
+    "EPA": {
+      "state": "checked",
+      "checked_at": "2026-11-24T22:43:52.429062+00:00",
+      "attempted_at": "2026-11-24T22:43:52.429062+00:00",
+      "workbook_created": "2026-09-21",
+      "source_url": "https://www3.epa.gov/pesticides/appril/apprildatadump_public.xlsx"
+    },
+    "Greenbook": {
+      "state": "not configured; saved references only",
+      "checked_at": null,
+      "retrieved_on": null
+    },
+    "CDMS": {
+      "state": "not configured; saved references only",
+      "checked_at": null,
+      "retrieved_on": null
+    }
+  },
+  "workbook_sha256": "c8ae0c3f1d683914689d3b4e08904b4c617735b19120dc819412a70b652258bb",
+  "changes": {
+    "added": 0,
+    "changed": 0,
+    "removed": 0
+  },
+  "database_changes": {
+    "initialized": 0,
+    "added": 0,
+    "changed": 0,
+    "removed": 0,
+    "reactivated": 0,
+    "unchanged": 880
+  }
+}

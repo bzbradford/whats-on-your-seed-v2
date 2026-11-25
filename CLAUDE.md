@@ -9,7 +9,14 @@
 - `tmp/session-log.md` — untracked, gitignored running log of each session (what was done, commands run, dead ends). Append to it as you work; never commit it.
 - The predecessor project, `../whats-on-your-seed`, is the style reference: same stack, and its CLAUDE.md conventions apply here unless this file says otherwise.
 
-Until the port is complete, `seed-treatment-database/` holds the **legacy** app and pipeline. Don't add features to `seed-treatment-database/static/index.html`; port them instead.
+## Layout
+
+- repo root: the Svelte app (`src/`, `tests/`, `public/`)
+- `public/data/` — **pipeline output, committed**: `catalog.json`, `sync-status.json`, `update-history.json`, `epa-import-audit.json`. The daily job commits here.
+- `pipeline/` — Python (uv). `reference/` holds the hand-curated inputs (scope, ingredient FRAC/IRAC reference, education text, label specs, source references).
+- `legacy/` — the original app, **frozen** as the visual/behaviour reference for the port. Its `static/` has its own catalog snapshot and still runs (`python3 legacy/serve.py`). Don't edit it; delete it at cutover.
+
+**Port goal:** replicate the legacy UI and theme exactly first (lift its CSS, keep its DOM/class structure), and only iterate on the design after parity. See PLAN.md Phase 3.
 
 ## Target architecture
 
@@ -34,7 +41,7 @@ Until the port is complete, `seed-treatment-database/` holds the **legacy** app 
 
 ```bash
 pnpm install            # pnpm only; version pinned via packageManager
-pnpm dev                # copy data into public/data/, start Vite dev server
+pnpm dev                # Vite dev server
 pnpm build              # Pages build -> dist/
 pnpm build:standalone   # offline single file -> dist-standalone/index.html (catalog inlined)
 pnpm preview            # serve dist/
@@ -43,7 +50,12 @@ pnpm test:e2e           # build, then Playwright against vite preview (tests/e2e
 pnpm lint / pnpm format # Prettier + ESLint (lint runs as the pre-commit hook)
 pnpm check              # svelte-check, fails on any warning
 pnpm verify             # lint + check + unit tests + both builds (CI also runs e2e)
-python3 seed-treatment-database/test_project.py --require-node   # legacy suite
+
+cd pipeline
+uv run pytest           # pipeline tests, incl. checks on the committed public/data/catalog.json
+uv run ruff check . && uv run ruff format .
+uv run python scheduled_update.py --db private/catalog.sqlite                # real EPA update (writes public/data/)
+uv run python scheduled_update.py --db /tmp/x.sqlite --output /tmp/out/catalog.json  # dry run elsewhere
 ```
 
 ## Key files
@@ -51,12 +63,15 @@ python3 seed-treatment-database/test_project.py --require-node   # legacy suite
 - `src/lib/catalog.ts` — catalog validation, fetch, and `loadCatalog()` (fetch on Pages; inlined `?raw` import when `MODE === 'standalone'`, dead-code-eliminated from the Pages bundle)
 - `src/lib/view-mode.ts` — `?embed` → compact layout
 - `src/lib/types.ts` — catalog types (partial; grow as features are ported)
-- `scripts/sync-data.js` — **temporary**: copies legacy `seed-treatment-database/static/*.json` into gitignored `public/data/` before dev/build. Goes away when the pipeline writes there (Phase 2).
 - `vite.config.js` — both build modes, `$data` alias, Vitest config
-- `.github/workflows/deploy.yaml` — CI (lint, check, unit, builds, e2e) and Pages deploy from `main`
+- `.github/workflows/deploy.yaml` — CI (web: lint, check, unit, builds, e2e; pipeline: ruff, pytest) and Pages deploy from `main`
+- `.github/workflows/data-update.yml` — daily 06:37 America/Chicago: refresh from EPA → validate everything → commit `public/data/` → dispatch `deploy.yaml`. SQLite history persists between runs as the `seed-catalog-sqlite` Actions artifact (90-day retention).
+- `pipeline/scheduled_update.py` — entry point for the daily job; `catalog.py` holds shared paths, publish/validation logic; `appril_workbook.py` parses the EPA xlsx with stdlib only
 
 ## Gotchas
 
+- Pushes made with `GITHUB_TOKEN` don't trigger workflows, which is why `data-update.yml` dispatches the deploy explicitly.
+- `pipeline/tests/test_published_catalog.py` checks the committed `public/data/` files, so a bad data commit fails CI.
 - `gh` defaults to the `upstream` remote when one exists. `gh repo set-default` has been set to the fork locally; pass `-R bzbradford/whats-on-your-seed-v2` in fresh clones.
 - TypeScript is pinned to 6.0.x: typescript-eslint and svelte-check don't support TS 7 yet.
 - Playwright's `webServer` must invoke `vite preview` directly, not through `pnpm`, or the server is orphaned and Playwright hangs on exit.
