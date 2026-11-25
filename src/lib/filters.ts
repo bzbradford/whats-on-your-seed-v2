@@ -116,6 +116,10 @@ export function matchesFilters(catalog: Catalog, p: Product, f: Filters): boolea
     (!purpose || p.purposes.includes(purpose)) &&
     (!technology || p.pesticide_type === technology) &&
     (!manufacturer || p.registrant === manufacturer) &&
+    // "Needs review / missing fields" deliberately matches every record whose ingredients
+    // are not a complete EPA product row: missing, partial, and base-linked distributor
+    // records (ingredients taken from the base registration; the UI says "check
+    // distributor label"). The legacy logic tests encode this; see PLAN.md Phase 3.
     (!q ||
       (q === 'verified'
         ? p.ingredient_quality === 'verified'

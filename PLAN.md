@@ -85,6 +85,25 @@ The legacy look and behaviour are the target: replicate first, iterate after.
 
 Port order: catalog load → shell/header/tabs → product list/search/filters/pager → product detail dialog → comparison matrix → ingredient guide → guides & sources → exports/print → sync/update status. Feature checklist below.
 
+### 3c. Post-parity fixes — done (branch `phase-3b-ui`)
+
+After sign-off, parity was retired and these landed one commit each, with tests:
+
+- [x] Screenshot parity tests removed (spec, helpers, `pixelmatch`/`pngjs`, legacy `webServer`). The weekly data job's `pnpm test:e2e` is behaviour-only.
+- [x] Hero uses the full width without the art (scoped style in `App.svelte`): single grid column, heading uncapped (also on mobile, where Oct 19 capped it at 66%), paragraph measure 740px (the legacy base hero cap). e2e checks widths at 1280 and 390 px.
+- [x] Brought forward: the abbreviations guide (23 terms) as a panel in the **Treatment guide**, before References; **Print this view** buttons in the products toolbar and the Ingredient guide, Treatment guide and Sources & updates headers. Oct 19's print CSS hid the workspace, grids and footer; scoped print rules now show the current view and the disclaimer (opened while printing). A print icon was added to the sprite.
+- [x] Oct 19 oddities fixed:
+  - Treatment guide no longer scrolls sideways on phones (`1fr` grid tracks → `minmax(0, 1fr)`); e2e: no tab overflows at 390 or 320 px.
+  - Safety panel's workbook label link uses the label buttons' identity guards (`workbookLabelFile()` in `labels.ts`); no link or "Exact registration match" claim otherwise. (Label URL logic unchanged pending the separate investigation into EPA PDFs that are letters rather than labels.)
+  - Hero source line: "EPA APPRIL data · saved Greenbook & CDMS references".
+  - Plurals everywhere (`count()` in `format.ts`): export toasts, coverage text, matrix matches, notice, source panels.
+  - Restricted-use chip uses the option labels (Yes / No / Not supplied).
+  - Applied-filter summary includes the search and a non-default status-date range; every chip is a button that removes its filter.
+  - Before the catalog loads: pager hidden, export buttons disabled.
+  - Polling fetches `sync-status.json` (+ history) and re-downloads `catalog.json` only when the publication changed (`publicationChanged()` in `sync.ts`). Also fixed: an invalid status file was thrown rather than treated as a failed check.
+  - CPN logo link opens in a new tab (`rel="noopener noreferrer"`).
+- **Not changed (decision): "Needs review / missing fields" still includes base-linked distributor records.** The pipeline (`appril_workbook.py`) sets `ingredient_quality` to `missing` (no ingredients), `base-linked` (ingredients from the related base registration, `ingredient_basis: Related EPA base registration`), `partial` (a percentage missing) or `verified` (complete EPA product row). Base-linked records are not missing fields, but every part of the UI flags them for review ("Related base formulation · check distributor label"; "Distributor use claims can be narrower; verify the distributor label"), the option set reads as "complete EPA row" vs "base formulation" vs "everything that needs a second look", and the legacy logic tests assert `needs-review = not verified`. So it's a defensible, intended meaning, not clearly a bug. If the user wants "missing fields" only, it's a one-line change (`missing` or `partial`) plus relabelling; current data: 3 such records vs 188 today.
+
 ### 4. Embed and polish
 
 - [ ] Compact embed layout (`?embed`), test inside an iframe on a page from a different origin
