@@ -138,7 +138,9 @@ Goal: make the products view scannable and the page less tall, keep the Oct 19 c
 
    Done: `FilterSelect` (Bits `Select`) for sort and the eight single-choice filters ("All …" maps to an internal sentinel because Bits treats `''` as no selection); Bits `Accordion` for the three collapsible filter groups; `HeaderTip` (Bits `Tooltip`) on the List's Signal / RUP and FRAC / IRAC headers. Kept native: the crop-site checkbox list (14 options; a checkbox group is already the clearest multi-select), date inputs (native pickers), print, the compare checkboxes, the dialog (native `<dialog>`). e2e covers the accordion keys, select keyboard use (open, End, Enter, Escape, focus return) and tooltips on focus.
 
-7. **Before/after screenshots** at 1440 and 390 px for the user's review, plus updated e2e coverage for both views.
+7. [x] **Before/after screenshots** at 1440 and 390 px for the user's review, plus updated e2e coverage for both views.
+
+   Done: screenshots in the session scratchpad (`layout-review/before-*.png` from `main`, `after-*.png`), at 1440 and 390 px: products top, products scrolled (both views), a product dialog, `?embed`. Page height for 25 results (current catalog): 1440 px cards 14,597 → 11,372, list 4,253; 390 px cards 23,268 → 16,860, list 9,292. e2e covers both views (pill, rows, sorting, sticky headers, phone stacking, flags).
 
 ### 4b. Shareable state and filtering (next batch)
 

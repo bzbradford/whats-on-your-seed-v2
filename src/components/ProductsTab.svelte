@@ -163,8 +163,8 @@
   <div class="section-intro">
     <h2>Explore seed treatments</h2>
     <p>
-      Start with a product name or a crop. Select <strong>Compare</strong> on any card to build your side-by-side
-      view.
+      Start with a product name or a crop. Select <strong>Compare</strong> on any product to build your
+      side-by-side view.
     </p>
   </div>
   <button
