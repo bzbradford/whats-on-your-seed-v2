@@ -124,7 +124,7 @@ Goal: make the products view scannable and the page less tall, keep the Oct 19 c
 
    Done: one label explanation above the results (`#label-help`, covering the EPA-accepted PDF, the lookup, distributors and supplemental labeling); the per-product note stays in the dialog's label panel. Cards show FRAC/IRAC only when assigned, no coverage line, "quality · Status date" footer, tighter spacing (scoped styles in `ProductCard`).
 
-3. **Sticky filter sidebar** on desktop (sticky, internal scroll if taller than the viewport). On phones, the "Show filters" button is pinned to the bottom of the screen.
+3. [x] **Sticky filter sidebar** on desktop (sticky, internal scroll if taller than the viewport). On phones, the "Show filters" button is pinned to the bottom of the screen. Done (scoped styles in `ProductsTab`): the sidebar keeps clear of the compare tray; the pinned button sits above it.
 4. **Hero:**
    - the title "What's on your seed?" on one line, with the hero shortened
    - remove the 01/02/03 step strip (it duplicates the tabs)

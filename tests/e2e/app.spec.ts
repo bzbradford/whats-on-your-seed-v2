@@ -257,6 +257,42 @@ test.describe('products', () => {
   });
 });
 
+test.describe('filters stay at hand', () => {
+  test('desktop: the sidebar stays in view while scrolling the results', async ({ page }) => {
+    await open(page);
+    await page.evaluate(() => window.scrollTo(0, 4000));
+    const box = await page.locator('#filters').boundingBox();
+    expect(box!.y).toBeGreaterThanOrEqual(0);
+    expect(box!.y).toBeLessThan(40);
+    expect(await page.locator('#filters').evaluate((e) => getComputedStyle(e).position)).toBe(
+      'sticky',
+    );
+  });
+
+  test('phones: Show filters is pinned to the bottom, above the compare tray', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await open(page);
+    await page.evaluate(() => window.scrollTo(0, 3000));
+    const button = page.locator('#mobile-filter');
+    const box = await button.boundingBox();
+    expect(box!.y + box!.height).toBeGreaterThan(844 - 80);
+    expect(box!.y + box!.height).toBeLessThanOrEqual(844);
+    await page.locator('[data-select]').first().check();
+    await expect(page.locator('#comparebar')).toBeVisible();
+    await expect
+      .poll(async () => {
+        const b = (await button.boundingBox())!;
+        const bar = (await page.locator('#comparebar').boundingBox())!;
+        return b.y + b.height <= bar.y;
+      })
+      .toBe(true);
+    await button.click();
+    await expect(page.locator('#filters')).toBeVisible();
+    await expect(page.locator('#filter-title')).toBeFocused();
+    await expect(button).toHaveText('Hide filters');
+  });
+});
+
 test.describe('list view', () => {
   test.beforeEach(async ({ page }) => open(page));
 

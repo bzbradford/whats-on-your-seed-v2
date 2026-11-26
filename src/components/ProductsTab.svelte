@@ -486,4 +486,33 @@
     align-items: center;
     gap: 10px 16px;
   }
+  /*
+   * 4a.3: the filter sidebar stays in view on desktop (scrolling inside itself when it is
+   * taller than the window, and clear of the compare tray); on phones the "Show filters"
+   * button is pinned to the bottom of the screen, above the compare tray.
+   */
+  @media screen and (min-width: 701px) {
+    .filter {
+      position: sticky;
+      top: 16px;
+      max-height: calc(100vh - 32px - var(--comparison-clearance, 0px));
+      overflow-y: auto;
+      overscroll-behavior: contain;
+    }
+  }
+  @media screen and (max-width: 700px) {
+    #mobile-filter {
+      position: fixed;
+      z-index: 9;
+      left: 16px;
+      right: 16px;
+      bottom: calc(12px + var(--comparison-clearance, 0px));
+      width: auto;
+      margin: 0;
+      background: var(--green-dark);
+      border-color: var(--green-dark);
+      color: #fff;
+      box-shadow: 0 4px 16px #122b3340;
+    }
+  }
 </style>
