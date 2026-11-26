@@ -319,11 +319,14 @@ test.describe('filters stay at hand', () => {
   test('desktop: the sidebar stays in view while scrolling the results', async ({ page }) => {
     await open(page);
     await page.evaluate(() => window.scrollTo(0, 4000));
-    // It sits just below the pinned tab bar and search + toolbar row.
-    const box = await page.locator('#filters').boundingBox();
-    const head = await page.locator('.results-head').boundingBox();
-    expect(box!.y).toBeGreaterThanOrEqual(head!.y + head!.height);
-    expect(box!.y).toBeLessThan(140);
+    // It pins beside the search + toolbar row (which spans only the results column),
+    // level with the search box, just under the pinned tab bar.
+    const box = (await page.locator('#filters').boundingBox())!;
+    const head = (await page.locator('.results-head').boundingBox())!;
+    const tabs = (await page.locator('.tabs').boundingBox())!;
+    expect(Math.abs(box.y - (tabs.y + tabs.height + 6))).toBeLessThanOrEqual(2);
+    expect(box.y).toBeLessThan(head.y + head.height);
+    expect(box.x + box.width).toBeLessThanOrEqual(head.x);
     expect(await page.locator('#filters').evaluate((e) => getComputedStyle(e).position)).toBe(
       'sticky',
     );
@@ -431,7 +434,7 @@ test.describe('sticky stack (4a follow-up 4)', () => {
   const rect = (page: Page, sel: string) =>
     page.locator(sel).evaluate((e) => {
       const r = e.getBoundingClientRect();
-      return { top: r.top, bottom: r.bottom, height: r.height };
+      return { top: r.top, bottom: r.bottom, height: r.height, left: r.left, right: r.right };
     });
 
   test('desktop: the tab bar and the search + toolbar row stay pinned', async ({ page }) => {
@@ -449,7 +452,9 @@ test.describe('sticky stack (4a follow-up 4)', () => {
       expect(tabs.top).toBe(0);
       expect(head.top).toBeCloseTo(tabs.bottom, 0);
       expect(head.bottom).toBeLessThanOrEqual(120);
-      expect(filters.top).toBeGreaterThanOrEqual(head.bottom);
+      // The sidebar sits beside the pinned row, level with the search box.
+      expect(Math.abs(filters.top - (tabs.bottom + 6))).toBeLessThanOrEqual(2);
+      expect(filters.right).toBeLessThanOrEqual(head.left);
       await expect(page.locator('#query')).toBeInViewport();
       await expect(page.locator('#download-menu')).toBeInViewport();
       await expect(page.getByRole('tab', { name: 'Treatment guide' })).toBeInViewport();

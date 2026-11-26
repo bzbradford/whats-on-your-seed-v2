@@ -571,12 +571,12 @@
    * button is pinned to the bottom of the screen, above the compare tray.
    */
   @media screen and (min-width: 701px) {
+    /* The pinned search/toolbar row spans only the results column, so the sidebar pins
+       beside it, level with the search box (the row's 6px top padding), not below it. */
     .filter {
       position: sticky;
-      top: calc(var(--tabs-h, 51px) + var(--head-h, 58px) + 12px);
-      max-height: calc(
-        100vh - var(--tabs-h, 51px) - var(--head-h, 58px) - 24px - var(--comparison-clearance, 0px)
-      );
+      top: calc(var(--tabs-h, 51px) + 6px);
+      max-height: calc(100vh - var(--tabs-h, 51px) - 18px - var(--comparison-clearance, 0px));
       overflow-y: auto;
       overscroll-behavior: contain;
     }
@@ -639,6 +639,21 @@
       border-color: var(--green-dark);
       color: #fff;
       box-shadow: 0 4px 16px #122b3340;
+    }
+    /* Phones: the view pill on its own line, then Sort and Download side by side. */
+    .result-controls {
+      flex-wrap: wrap;
+      width: 100%;
+    }
+    .result-controls > :global(:first-child) {
+      flex: 1 0 100%;
+    }
+    .result-controls > :global(:nth-child(2)) {
+      flex: 1 1 0;
+      min-width: 0;
+    }
+    .result-controls > :global(:nth-child(3)) {
+      flex: 0 0 auto;
     }
   }
   .result-meta {
