@@ -2,7 +2,7 @@
   import { getApp } from '../lib/context';
   import { fmt, shortSite } from '../lib/format';
   import { labelAccess } from '../lib/labels';
-  import { coverageText, groupText, ingredientsEyebrow, quality } from '../lib/product-facts';
+  import { ingredientsEyebrow, moaGroups, quality } from '../lib/product-facts';
   import type { Product } from '../lib/types';
   import ExtLink from './ExtLink.svelte';
   import LabelAction from './LabelAction.svelte';
@@ -13,6 +13,16 @@
   const app = getApp();
   const reference = $derived(app.catalog.ingredient_reference);
   const selected = $derived(app.selected.includes(p.id));
+  /** FRAC / IRAC codes, only when the ingredients have reviewed assignments. */
+  const groups = $derived(
+    [
+      ['FRAC', moaGroups(reference, p, 'frac')],
+      ['IRAC', moaGroups(reference, p, 'irac')],
+    ]
+      .filter(([, codes]) => codes.length)
+      .map(([scheme, codes]) => `${scheme} ${(codes as string[]).join(', ')}`)
+      .join(' · '),
+  );
 
   function onCompareChange(event: Event) {
     const input = event.currentTarget as HTMLInputElement;
@@ -67,10 +77,7 @@
     </div>
   </div>
   <div class="safety-strip">
-    <div class="eyebrow">EPA hazards &amp; resistance groups</div>
-    <SafetyBadges product={p} /><span>
-      FRAC: {groupText(reference, p, 'frac')} · IRAC: {groupText(reference, p, 'irac')}
-    </span><span class="muted coverage">{coverageText(reference, p)}</span>
+    <SafetyBadges product={p} />{#if groups}<span class="groups">{groups}</span>{/if}
   </div>
   <div class="product-labels">
     <LabelAction product={p} />{#each labelAccess(p).supplemental as s (s.url)}<span
@@ -78,10 +85,9 @@
       >
         <ExtLink url={s.url} text={'Supplemental labeling · ' + fmt(s.date)} />
       </span>{/each}
-    <p class="label-meta">{labelAccess(p).note}</p>
   </div>
   <div class="product-bottom">
-    <span class="muted">{quality(p)} · Status date {fmt(p.status_date)}</span><label
+    <span class="muted">{quality(p)} · Status {fmt(p.status_date)}</span><label
       class="comparecheck"
     >
       <input
@@ -96,7 +102,60 @@
 </article>
 
 <style>
+  /*
+   * Slimmed card (4a.2): tighter spacing, no repeated label explanation (it is once above
+   * the results), FRAC/IRAC only when assigned, coverage detail in the dialog.
+   */
+  .product {
+    margin-bottom: 14px;
+  }
+  .product .product-top {
+    padding: 16px 20px 6px;
+  }
+  .product :global(h3) {
+    font-size: 1.5rem;
+  }
+  .product .product-main {
+    padding: 0 20px 10px;
+    gap: 16px;
+  }
+  .product .product-main :global(.eyebrow) {
+    margin: 4px 0;
+  }
+  .product .safety-strip {
+    margin: 0 20px;
+    padding: 10px 0;
+    gap: 6px 12px;
+  }
+  .product .product-labels {
+    padding: 0 20px 12px;
+    gap: 6px 14px;
+  }
+  .product .product-bottom {
+    padding: 6px 20px;
+  }
+  .groups {
+    font-weight: 600;
+    color: #354936;
+  }
   .label-supplemental {
     font-size: 0.8125rem;
+  }
+  @media (max-width: 700px) {
+    .product .product-top {
+      padding: 14px 16px 6px;
+    }
+    .product .product-main {
+      padding: 0 16px 8px;
+    }
+    .product .safety-strip {
+      margin: 0 16px;
+    }
+    .product .product-labels {
+      padding: 0 16px 10px;
+    }
+    .product .product-bottom {
+      padding: 6px 16px;
+    }
   }
 </style>

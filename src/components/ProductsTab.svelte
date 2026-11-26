@@ -338,9 +338,13 @@
         </button><PrintViewButton />
       </div>
       <p id="label-help" class="small muted label-help">
-        Open a label PDF and use its download / save control. <strong>Export label links</strong> saves
-        a CSV for all matching products across every page; reset filters to include the full catalog.
-        PDF documents require an internet connection.
+        <strong>EPA-accepted label (PDF)</strong> opens EPA’s file for that exact registration:
+        EPA’s acceptance letter first, then the EPA-accepted master label, which can differ from the
+        label on the container. <strong>Find product label</strong> opens EPA’s label search where
+        there is no direct file (distributor products: search the full EPA number, or ask the
+        registrant for the marketed label). Newer supplemental labeling is linked separately. Each
+        product’s details give its file date. PDFs need an internet connection.
+        <strong>Export label links</strong> saves a CSV for all matching products across every page.
       </p>
       <div class="result-heading">
         <h3 id="count" tabindex="-1">

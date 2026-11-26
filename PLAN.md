@@ -116,11 +116,14 @@ Goal: make the products view scannable and the page less tall, keep the Oct 19 c
 
    Done: `ViewToggle` (Bits `ToggleGroup`, radios), `ProductList` (table with sticky headers; Product, Active ingredient, Purpose and Signal word sort both ways with `aria-sort`; the name button is the keyboard path to the dialog, a click elsewhere on the row is a mouse shortcut; phones get compact stacked rows and sort with the Sort menu). Rows list up to four ingredients (longer Bt stacks show three and "+N more"), crop families (exact sites in the tooltip and dialog), FRAC/IRAC when assigned, the label link and supplemental labeling, and Compare. Preference in `src/lib/preferences.ts` (`cpn-seed-view`). Sort keys gained reverse orders, registrant and signal severity (`SORTS` in `filters.ts`).
 
-2. **Cut per-product boilerplate:**
+2. [x] **Cut per-product boilerplate:**
    - the label-PDF explanation appears once, in the help text above the results
    - FRAC/IRAC lines only when assigned
    - the "N ingredients without a reviewed assignment" coverage line moves to the dialog
    - the quality / status-date footer line is condensed
+
+   Done: one label explanation above the results (`#label-help`, covering the EPA-accepted PDF, the lookup, distributors and supplemental labeling); the per-product note stays in the dialog's label panel. Cards show FRAC/IRAC only when assigned, no coverage line, "quality · Status date" footer, tighter spacing (scoped styles in `ProductCard`).
+
 3. **Sticky filter sidebar** on desktop (sticky, internal scroll if taller than the viewport). On phones, the "Show filters" button is pinned to the bottom of the screen.
 4. **Hero:**
    - the title "What's on your seed?" on one line, with the hero shortened

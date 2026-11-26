@@ -154,6 +154,20 @@ test.describe('products', () => {
     await expect(page.locator('#query')).toBeFocused();
   });
 
+  test('cards: FRAC/IRAC only when assigned, coverage in the dialog', async ({ page }) => {
+    await page.locator('#query').fill('100-1508');
+    const card = page.locator('.product');
+    await expect(card.locator('.groups')).toHaveText('FRAC 4, 7, 12 · IRAC 4A');
+    await expect(card).not.toContainText('reviewed FRAC/IRAC assignment');
+    await expect(card).not.toContainText('No reviewed assignment');
+    await expect(card.locator('.product-bottom')).toContainText('· Status ');
+    await page.locator('#query').fill('5905-491-38167');
+    await expect(page.locator('.product .groups')).toHaveCount(0);
+    await page.locator('.product-name').click();
+    await expect(page.locator('#dialog-body')).toContainText('Ingredients missing; groups unknown');
+    await page.keyboard.press('Escape');
+  });
+
   test('label links: exact EPA PDF and distributor lookup', async ({ page, context }) => {
     await page.locator('#query').fill(labelProduct.id);
     const link = page.locator('.product .label-action');
@@ -172,7 +186,12 @@ test.describe('products', () => {
     await opened.close();
     await page.locator('#query').fill('5905-491-38167');
     await expect(page.locator('.product .label-action')).toContainText('Find product label');
-    await expect(page.locator('.product .label-meta')).toContainText('5905-491-38167');
+    // The per-product note is in the dialog; the cards share one explanation.
+    await expect(page.locator('.product .label-meta')).toHaveCount(0);
+    await expect(page.locator('#label-help')).toContainText('acceptance letter');
+    await page.locator('.product-name').click();
+    await expect(page.locator('#dialog-body .label-panel')).toContainText('5905-491-38167');
+    await page.keyboard.press('Escape');
   });
 
   test('exports: label links (filtered and all) and results CSV', async ({ page }) => {
@@ -723,8 +742,8 @@ test('newer supplemental-only labeling is linked next to the full label', async 
     'href',
     product.safety.label_url!,
   );
-  await expect(page.locator('.product .label-meta')).toContainText('acceptance letter');
   await page.locator('.product-name').click();
+  await expect(page.locator('#dialog-body .label-panel')).toContainText('acceptance letter');
   const item = page.locator('#dialog-body .label-supplemental-list a');
   await expect(item).toHaveAttribute('href', url);
   await expect(item).toContainText('Supplemental label: new use');
