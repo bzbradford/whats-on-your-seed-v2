@@ -5,7 +5,9 @@
   import { labelAccess } from '../lib/labels';
   import { moaGroups, signalClass, signalText } from '../lib/product-facts';
   import type { Product } from '../lib/types';
+  import { Tooltip } from 'bits-ui';
   import ExtLink from './ExtLink.svelte';
+  import HeaderTip from './HeaderTip.svelte';
   import LabelAction from './LabelAction.svelte';
   import RecordFlag from './RecordFlag.svelte';
 
@@ -20,12 +22,22 @@
    */
   const shown = (p: Product) => (p.ingredients.length > 4 ? 3 : p.ingredients.length);
 
-  const COLUMNS: { key: SortColumn | null; label: string; className: string }[] = [
+  const COLUMNS: { key: SortColumn | null; label: string; className: string; tip?: string }[] = [
     { key: 'name', label: 'Product', className: 'col-product' },
     { key: 'ingredient', label: 'Active ingredients', className: 'col-ingredients' },
     { key: 'purpose', label: 'Purpose', className: 'col-purpose' },
-    { key: 'signal', label: 'Signal / RUP', className: 'col-signal' },
-    { key: null, label: 'FRAC / IRAC', className: 'col-groups' },
+    {
+      key: 'signal',
+      label: 'Signal / RUP',
+      className: 'col-signal',
+      tip: 'EPA signal word (DANGER, WARNING, CAUTION, none reported, or not supplied) and whether EPA flags the product as a restricted-use pesticide (RUP).',
+    },
+    {
+      key: null,
+      label: 'FRAC / IRAC',
+      className: 'col-groups',
+      tip: 'Fungicide (FRAC) and insecticide (IRAC) resistance-group codes of the ingredients, where reviewed. Groups describe mode of action, not efficacy.',
+    },
     { key: null, label: 'Crops', className: 'col-crops' },
     { key: null, label: 'Label', className: 'col-label' },
     { key: null, label: 'Compare', className: 'col-compare' },
@@ -42,6 +54,11 @@
       .join(' · ');
   }
 
+  function sortMark(key: SortColumn): string {
+    const dir = ariaSort(app.filters.sort, key);
+    return dir === 'ascending' ? '▲' : dir === 'descending' ? '▼' : '↕';
+  }
+
   function onRowClick(event: MouseEvent, p: Product) {
     const target = event.target as HTMLElement;
     if (target.closest('a, button, input, label')) return;
@@ -55,107 +72,120 @@
   }
 </script>
 
-<table class="product-list">
-  <caption class="sr-only">
-    Products, {app.pageInfo.label}. Select a product name for its full record.
-  </caption>
-  <thead>
-    <tr>
-      {#each COLUMNS as col (col.label)}
-        <th
-          scope="col"
-          class={col.className}
-          aria-sort={col.key ? ariaSort(app.filters.sort, col.key) : undefined}
-        >
-          {#if col.key}
-            {@const key = col.key}
-            <button
-              type="button"
-              class="sort-button"
-              data-sort-column={key}
-              onclick={() => (app.filters.sort = columnSort(app.filters.sort, key))}
-            >
-              {col.label}<span class="sort-mark" aria-hidden="true">
-                {ariaSort(app.filters.sort, key) === 'ascending'
-                  ? '▲'
-                  : ariaSort(app.filters.sort, key) === 'descending'
-                    ? '▼'
-                    : '↕'}
-              </span>
-            </button>
-          {:else}
-            {col.label}
-          {/if}
-        </th>
-      {/each}
-    </tr>
-  </thead>
-  <tbody>
-    {#each products as p (p.id)}
-      {@const selected = app.selected.includes(p.id)}
-      {@const access = labelAccess(p)}
-      {@const g = groups(p)}
-      <tr class="product-row" class:selected onclick={(e) => onRowClick(e, p)}>
-        <th scope="row" class="col-product">
-          <button
-            class="row-name"
-            aria-haspopup="dialog"
-            data-detail={p.id}
-            onclick={() => app.openDialog({ kind: 'product', id: p.id })}
+<Tooltip.Provider>
+  <table class="product-list">
+    <caption class="sr-only">
+      Products, {app.pageInfo.label}. Select a product name for its full record.
+    </caption>
+    <thead>
+      <tr>
+        {#each COLUMNS as col (col.label)}
+          <th
+            scope="col"
+            class={col.className}
+            aria-sort={col.key ? ariaSort(app.filters.sort, col.key) : undefined}
           >
-            {p.name}
-          </button>
-          <span class="row-sub">{p.registrant} · EPA {p.registration_number}</span>
-          <RecordFlag product={p} />
-        </th>
-        <td class="col-ingredients">
-          {#each p.ingredients.slice(0, shown(p)) as a, i (i)}
-            <span class="row-ingredient">
-              <span class="row-ingredient-name" title={a.name}>
-                {a.name}
-              </span>{#if a.percent != null}<span class="pct">{a.percent}%</span>{/if}
-            </span>
-          {:else}
-            <span class="muted">Not in source entry</span>
-          {/each}
-          {#if p.ingredients.length > shown(p)}<span class="row-more">
-              +{p.ingredients.length - shown(p)} more
-            </span>{/if}
-        </td>
-        <td class="col-purpose">
-          {#each p.purposes as purpose (purpose)}<span class="row-purpose">{purpose}</span>{/each}
-        </td>
-        <td class="col-signal">
-          <span class="row-signal {signalClass(p)}">{signalText(p)}</span>
-          {#if p.safety?.restricted_use === true}<span class="row-rup">Restricted use</span>{/if}
-        </td>
-        <td class="col-groups" data-label="FRAC/IRAC">
-          {#if g}{g}{:else}<span class="none" aria-label="None assigned">—</span>{/if}
-        </td>
-        <td class="col-crops" data-label="Crops" title={p.sites.map(shortSite).join('; ')}>
-          {cropFamilies(p.sites).join(', ')}
-        </td>
-        <td class="col-label">
-          <LabelAction product={p} compact />
-          {#each access.supplemental as s (s.url)}<span class="label-supplemental">
-              <ExtLink url={s.url} text={'Supplemental · ' + fmt(s.date)} />
-            </span>{/each}
-        </td>
-        <td class="col-compare">
-          <label class="row-compare">
-            <input
-              type="checkbox"
-              data-select={p.id}
-              checked={selected}
-              aria-label="Compare {p.name}, EPA {p.registration_number}"
-              onchange={(e) => onCompareChange(e, p)}
-            /><span>Compare</span>
-          </label>
-        </td>
+            {#if col.key}
+              {@const key = col.key}
+              {#snippet sortLabel()}{col.label}<span class="sort-mark" aria-hidden="true">
+                  {sortMark(key)}
+                </span>{/snippet}
+              {#if col.tip}
+                <HeaderTip
+                  tip={col.tip}
+                  asButton
+                  buttonClass="sort-button"
+                  dataSortColumn={key}
+                  onclick={() => (app.filters.sort = columnSort(app.filters.sort, key))}
+                >
+                  {@render sortLabel()}
+                </HeaderTip>
+              {:else}
+                <button
+                  type="button"
+                  class="sort-button"
+                  data-sort-column={key}
+                  onclick={() => (app.filters.sort = columnSort(app.filters.sort, key))}
+                >
+                  {@render sortLabel()}
+                </button>
+              {/if}
+            {:else if col.tip}
+              <HeaderTip tip={col.tip}>{col.label}</HeaderTip>
+            {:else}
+              {col.label}
+            {/if}
+          </th>
+        {/each}
       </tr>
-    {/each}
-  </tbody>
-</table>
+    </thead>
+    <tbody>
+      {#each products as p (p.id)}
+        {@const selected = app.selected.includes(p.id)}
+        {@const access = labelAccess(p)}
+        {@const g = groups(p)}
+        <tr class="product-row" class:selected onclick={(e) => onRowClick(e, p)}>
+          <th scope="row" class="col-product">
+            <button
+              class="row-name"
+              aria-haspopup="dialog"
+              data-detail={p.id}
+              onclick={() => app.openDialog({ kind: 'product', id: p.id })}
+            >
+              {p.name}
+            </button>
+            <span class="row-sub">{p.registrant} · EPA {p.registration_number}</span>
+            <RecordFlag product={p} />
+          </th>
+          <td class="col-ingredients">
+            {#each p.ingredients.slice(0, shown(p)) as a, i (i)}
+              <span class="row-ingredient">
+                <span class="row-ingredient-name" title={a.name}>
+                  {a.name}
+                </span>{#if a.percent != null}<span class="pct">{a.percent}%</span>{/if}
+              </span>
+            {:else}
+              <span class="muted">Not in source entry</span>
+            {/each}
+            {#if p.ingredients.length > shown(p)}<span class="row-more">
+                +{p.ingredients.length - shown(p)} more
+              </span>{/if}
+          </td>
+          <td class="col-purpose">
+            {#each p.purposes as purpose (purpose)}<span class="row-purpose">{purpose}</span>{/each}
+          </td>
+          <td class="col-signal">
+            <span class="row-signal {signalClass(p)}">{signalText(p)}</span>
+            {#if p.safety?.restricted_use === true}<span class="row-rup">Restricted use</span>{/if}
+          </td>
+          <td class="col-groups" data-label="FRAC/IRAC">
+            {#if g}{g}{:else}<span class="none" aria-label="None assigned">—</span>{/if}
+          </td>
+          <td class="col-crops" data-label="Crops" title={p.sites.map(shortSite).join('; ')}>
+            {cropFamilies(p.sites).join(', ')}
+          </td>
+          <td class="col-label">
+            <LabelAction product={p} compact />
+            {#each access.supplemental as s (s.url)}<span class="label-supplemental">
+                <ExtLink url={s.url} text={'Supplemental · ' + fmt(s.date)} />
+              </span>{/each}
+          </td>
+          <td class="col-compare">
+            <label class="row-compare">
+              <input
+                type="checkbox"
+                data-select={p.id}
+                checked={selected}
+                aria-label="Compare {p.name}, EPA {p.registration_number}"
+                onchange={(e) => onCompareChange(e, p)}
+              /><span>Compare</span>
+            </label>
+          </td>
+        </tr>
+      {/each}
+    </tbody>
+  </table>
+</Tooltip.Provider>
 
 <style>
   .product-list {
@@ -217,7 +247,7 @@
   .col-compare {
     width: 8%;
   }
-  .sort-button {
+  .product-list :global(.sort-button) {
     display: inline-flex;
     align-items: center;
     gap: 6px;
@@ -231,7 +261,7 @@
     font: inherit;
     text-align: left;
   }
-  .sort-button:hover:not(:disabled) {
+  .product-list :global(.sort-button:hover:not(:disabled)) {
     background: #33593d;
   }
   .sort-mark {

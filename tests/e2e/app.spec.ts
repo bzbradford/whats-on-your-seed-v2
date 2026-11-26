@@ -16,6 +16,13 @@ async function open(page: Page, url = './') {
   await page.locator('.product').first().waitFor();
 }
 
+/** Pick an option in a Bits UI Select (a combobox button and a listbox). */
+async function choose(page: Page, id: string, option: string) {
+  await page.locator('#' + id).click();
+  await page.getByRole('option', { name: option, exact: true }).click();
+  await expect(page.getByRole('listbox')).toHaveCount(0);
+}
+
 const isFocused = (page: Page, selector: string) =>
   page.locator(selector).evaluate((e) => e === document.activeElement);
 
@@ -70,26 +77,26 @@ test.describe('products', () => {
     await expect(page.locator('#applied .chip')).toHaveText(['Barley×']);
     await page.locator('#reset').click();
     await expect(page.locator('#count')).toHaveText('880 products');
-    await page.locator('#technology').selectOption('Plant-Incorp. Protectant');
+    await choose(page, 'technology', 'Plant-Incorp. Protectant');
     await expect(page.locator('#count')).toHaveText('85 products');
     await page.locator('#reset').click();
-    await page.locator('.record-filters summary').click();
-    await page.locator('#quality').selectOption('base-linked');
+    await page.getByRole('button', { name: 'Company & ingredient evidence' }).click();
+    await choose(page, 'quality', 'Related base formulation');
     await expect(page.locator('#count')).toHaveText('185 products');
     await page.locator('#reset').click();
     await page.getByText('Groups & EPA hazards', { exact: true }).click();
-    await page.locator('#signal').selectOption('NONE');
+    await choose(page, 'signal', 'None reported by EPA');
     await expect(page.locator('#count')).toHaveText('25 products');
-    await page.locator('#signal').selectOption('NOT_SUPPLIED');
+    await choose(page, 'signal', 'Not supplied / needs review');
     await expect(page.locator('#count')).toHaveText('187 products');
     await page.locator('#reset').click();
-    await page.locator('#rup').selectOption('yes');
+    await choose(page, 'rup', 'Yes');
     await expect(page.locator('#count')).toHaveText('19 products');
     // Oct 19 cards show a restricted-use badge only when the flag is Yes.
     await expect(page.locator('.product').first().locator('.safety-badge.warning')).toHaveText(
       'Restricted-use flag: Yes',
     );
-    await page.locator('#rup').selectOption('no');
+    await choose(page, 'rup', 'No');
     await expect(page.locator('.product .safety-badge', { hasText: 'Restricted-use' })).toHaveCount(
       0,
     );
@@ -102,7 +109,7 @@ test.describe('products', () => {
   }) => {
     await page.locator('#query').fill('fludioxonil');
     await page.getByText('Groups & EPA hazards', { exact: true }).click();
-    await page.locator('#rup').selectOption('no');
+    await choose(page, 'rup', 'No');
     await page.getByText('Registration status & dates', { exact: true }).click();
     await page.locator('#start').fill('2020-01-01');
     await expect(page.locator('#applied .chip')).toHaveText([
@@ -301,6 +308,63 @@ test.describe('filters stay at hand', () => {
     await expect(page.locator('#filters')).toBeVisible();
     await expect(page.locator('#filter-title')).toBeFocused();
     await expect(button).toHaveText('Hide filters');
+  });
+});
+
+test.describe('filter controls: keyboard and screen readers', () => {
+  test.beforeEach(async ({ page }) => open(page));
+
+  test('filter groups are accordion buttons with aria-expanded', async ({ page }) => {
+    const trigger = page.getByRole('button', { name: 'Groups & EPA hazards' });
+    await expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    await trigger.focus();
+    await page.keyboard.press('Enter');
+    await expect(trigger).toHaveAttribute('aria-expanded', 'true');
+    await expect(page.getByRole('combobox', { name: 'EPA signal word' })).toBeVisible();
+    await page.keyboard.press('Space');
+    await expect(trigger).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  test('selects are labelled comboboxes operable from the keyboard', async ({ page }) => {
+    await page.getByRole('button', { name: 'Groups & EPA hazards' }).click();
+    const signal = page.getByRole('combobox', { name: 'EPA signal word' });
+    await expect(signal).toHaveText('All signal words');
+    await signal.focus();
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('listbox')).toBeVisible();
+    await page.keyboard.press('End');
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('listbox')).toHaveCount(0);
+    await expect(signal).toHaveText('Not supplied / needs review');
+    await expect(signal).toBeFocused();
+    await expect(page.locator('#count')).toHaveText('187 products');
+    // Escape closes without changing the choice.
+    await page.keyboard.press('ArrowDown');
+    await expect(page.getByRole('listbox')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('listbox')).toHaveCount(0);
+    await expect(signal).toBeFocused();
+    await expect(page.locator('#count')).toHaveText('187 products');
+    // Choosing "All signal words" clears the filter again.
+    await choose(page, 'signal', 'All signal words');
+    await expect(page.locator('#count')).toHaveText('880 products');
+  });
+
+  test('the sort menu offers every order, including the list columns', async ({ page }) => {
+    const sort = page.getByRole('combobox', { name: 'Sort' });
+    await sort.click();
+    await expect(page.getByRole('option')).toHaveCount(12);
+    await page.getByRole('option', { name: 'Signal word, most severe first' }).click();
+    await page.getByRole('radio', { name: 'List' }).click();
+    await expect(page.locator('thead th.col-signal')).toHaveAttribute('aria-sort', 'descending');
+  });
+
+  test('terse list headers explain themselves on focus', async ({ page }) => {
+    await page.getByRole('radio', { name: 'List' }).click();
+    await page.locator('thead th.col-groups [tabindex="0"]').focus();
+    await expect(page.locator('.header-tip')).toContainText('resistance-group codes');
+    await page.keyboard.press('Escape');
+    await expect(page.locator('.header-tip')).toHaveCount(0);
   });
 });
 

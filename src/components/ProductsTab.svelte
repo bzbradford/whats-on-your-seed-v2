@@ -11,6 +11,7 @@
   } from '../lib/csv';
   import {
     DATE_ERROR,
+    RUP_LABELS,
     SORTS,
     appliedFilters,
     clearChip,
@@ -20,6 +21,8 @@
   } from '../lib/filters';
   import { epaDataAsOf } from '../lib/currency';
   import { fmt, localDate } from '../lib/format';
+  import { Accordion } from 'bits-ui';
+  import FilterSelect, { type SelectOption } from './FilterSelect.svelte';
   import Icon from './Icon.svelte';
   import PrintViewButton from './PrintViewButton.svelte';
   import ProductCard from './ProductCard.svelte';
@@ -27,6 +30,28 @@
   import ViewToggle from './ViewToggle.svelte';
 
   const app = getApp();
+
+  const opts = (values: string[]): SelectOption[] => values.map((v) => ({ value: v, label: v }));
+  const SIGNAL_OPTIONS: SelectOption[] = [
+    { value: 'DANGER', label: 'DANGER' },
+    { value: 'WARNING', label: 'WARNING' },
+    { value: 'CAUTION', label: 'CAUTION' },
+    { value: 'NONE', label: 'None reported by EPA' },
+    { value: 'NOT_SUPPLIED', label: 'Not supplied / needs review' },
+  ];
+  const RUP_OPTIONS: SelectOption[] = Object.entries(RUP_LABELS).map(([value, label]) => ({
+    value,
+    label,
+  }));
+  const QUALITY_OPTIONS: SelectOption[] = [
+    { value: 'verified', label: 'EPA row · complete percentages' },
+    { value: 'base-linked', label: 'Related base formulation' },
+    { value: 'needs-review', label: 'Needs review / missing fields' },
+  ];
+  const SORT_OPTIONS: SelectOption[] = Object.entries(SORTS).map(([value, sort]) => ({
+    value,
+    label: sort.label,
+  }));
   const ready = $derived(app.loadState === 'ready');
   const n = $derived(app.result.products.length);
   const today = localDate();
@@ -197,108 +222,121 @@
       </fieldset>
       <fieldset class="filter-group">
         <legend>Treatment purpose</legend>
-        <label class="field">
-          <span>EPA product purpose</span><select id="purpose" bind:value={app.filters.purpose}>
-            <option value="">All purposes</option>
-            {#if ready}
-              {#each app.options.purpose as x (x)}<option>{x}</option>{/each}
-            {:else}
-              <option>Fungicide</option><option>Insecticide</option><option>
-                Nematicide
-              </option><option>Biological</option><option>Unclassified</option>
-            {/if}
-          </select>
-        </label><label class="field">
-          <span>Technology type</span><select id="technology" bind:value={app.filters.technology}>
-            <option value="">All technologies</option>
-            {#each app.options.technology as x (x)}<option>{x}</option>{/each}
-          </select>
-        </label>
+        <FilterSelect
+          id="purpose"
+          label="EPA product purpose"
+          allLabel="All purposes"
+          options={opts(ready ? app.options.purpose : [])}
+          bind:value={app.filters.purpose}
+        />
+        <FilterSelect
+          id="technology"
+          label="Technology type"
+          allLabel="All technologies"
+          options={opts(app.options.technology)}
+          bind:value={app.filters.technology}
+        />
       </fieldset>
-      <details>
-        <summary>Groups &amp; EPA hazards</summary>
-        <label class="field">
-          <span>FRAC fungicide group</span><select id="frac" bind:value={app.filters.frac}>
-            <option value="">All FRAC groups</option>
-            {#each app.options.frac as x (x)}<option>{x}</option>{/each}
-          </select>
-        </label><label class="field">
-          <span>IRAC insecticide group</span><select id="irac" bind:value={app.filters.irac}>
-            <option value="">All IRAC groups</option>
-            {#each app.options.irac as x (x)}<option>{x}</option>{/each}
-          </select>
-        </label><label class="field">
-          <span>EPA signal word</span><select id="signal" bind:value={app.filters.signal}>
-            <option value="">All signal words</option><option value="DANGER">DANGER</option><option
-              value="WARNING"
-            >
-              WARNING
-            </option><option value="CAUTION">CAUTION</option><option value="NONE">
-              None reported by EPA
-            </option><option value="NOT_SUPPLIED">Not supplied / needs review</option>
-          </select>
-        </label><label class="field">
-          <span>EPA restricted-use flag</span><select id="rup" bind:value={app.filters.rup}>
-            <option value="">All flags</option><option value="yes">Yes</option><option value="no">
-              No
-            </option><option value="unknown">Not supplied</option>
-          </select>
-        </label>
-      </details>
-      <details class="record-filters">
-        <summary>Company &amp; ingredient evidence</summary>
-        <label class="field">
-          <span>Registrant / manufacturer</span><select
-            id="manufacturer"
-            bind:value={app.filters.manufacturer}
-          >
-            <option value="">All companies</option>
-            {#each app.options.manufacturer as x (x)}<option>{x}</option>{/each}
-          </select>
-        </label><label class="field">
-          <span>Ingredient data</span><select id="quality" bind:value={app.filters.quality}>
-            <option value="">All records</option><option value="verified">
-              EPA row · complete percentages
-            </option><option value="base-linked">Related base formulation</option><option
-              value="needs-review"
-            >
-              Needs review / missing fields
-            </option>
-          </select>
-        </label>
-      </details>
-      <details>
-        <summary>Registration status &amp; dates</summary>
-        <label class="field">
-          <span>Status group</span><input value="Active Products" disabled />
-        </label><label class="field">
-          <span>Status date – start</span><input
-            type="date"
-            id="start"
-            max={today}
-            aria-describedby="date-help date-error"
-            aria-invalid={app.result.invalidDates ? 'true' : undefined}
-            bind:value={app.filters.start}
-          />
-        </label><label class="field">
-          <span>Status date – end</span><input
-            type="date"
-            id="end"
-            max={today}
-            aria-describedby="date-help date-error"
-            aria-invalid={app.result.invalidDates ? 'true' : undefined}
-            bind:value={app.filters.end}
-          />
-        </label>
-        <p class="small muted" id="date-help">
-          {ready
-            ? 'Uses EPA STATUS_DT. Blank start; end is the import cutoff. Changing this filter does not retrieve newer EPA records.'
-            : 'Start is blank; end defaults to today. Uses EPA status dates.'}
-        </p>
-        <p id="date-error" class="field-error" hidden={!app.result.invalidDates}>
-          {app.result.invalidDates ? DATE_ERROR : ''}
-        </p>
-      </details>
+      <Accordion.Root type="multiple" class="filter-accordion">
+        <Accordion.Item value="groups" class="filter-section">
+          <Accordion.Header level={3}>
+            <Accordion.Trigger class="filter-section-trigger">
+              Groups &amp; EPA hazards
+            </Accordion.Trigger>
+          </Accordion.Header>
+          <Accordion.Content class="filter-section-content">
+            <FilterSelect
+              id="frac"
+              label="FRAC fungicide group"
+              allLabel="All FRAC groups"
+              options={opts(app.options.frac)}
+              bind:value={app.filters.frac}
+            />
+            <FilterSelect
+              id="irac"
+              label="IRAC insecticide group"
+              allLabel="All IRAC groups"
+              options={opts(app.options.irac)}
+              bind:value={app.filters.irac}
+            />
+            <FilterSelect
+              id="signal"
+              label="EPA signal word"
+              allLabel="All signal words"
+              options={SIGNAL_OPTIONS}
+              bind:value={app.filters.signal}
+            />
+            <FilterSelect
+              id="rup"
+              label="EPA restricted-use flag"
+              allLabel="All flags"
+              options={RUP_OPTIONS}
+              bind:value={app.filters.rup}
+            />
+          </Accordion.Content>
+        </Accordion.Item>
+        <Accordion.Item value="records" class="filter-section record-filters">
+          <Accordion.Header level={3}>
+            <Accordion.Trigger class="filter-section-trigger">
+              Company &amp; ingredient evidence
+            </Accordion.Trigger>
+          </Accordion.Header>
+          <Accordion.Content class="filter-section-content">
+            <FilterSelect
+              id="manufacturer"
+              label="Registrant / manufacturer"
+              allLabel="All companies"
+              options={opts(app.options.manufacturer)}
+              bind:value={app.filters.manufacturer}
+            />
+            <FilterSelect
+              id="quality"
+              label="Ingredient data"
+              allLabel="All records"
+              options={QUALITY_OPTIONS}
+              bind:value={app.filters.quality}
+            />
+          </Accordion.Content>
+        </Accordion.Item>
+        <Accordion.Item value="dates" class="filter-section">
+          <Accordion.Header level={3}>
+            <Accordion.Trigger class="filter-section-trigger">
+              Registration status &amp; dates
+            </Accordion.Trigger>
+          </Accordion.Header>
+          <Accordion.Content class="filter-section-content">
+            <label class="field">
+              <span>Status group</span><input value="Active Products" disabled />
+            </label><label class="field">
+              <span>Status date – start</span><input
+                type="date"
+                id="start"
+                max={today}
+                aria-describedby="date-help date-error"
+                aria-invalid={app.result.invalidDates ? 'true' : undefined}
+                bind:value={app.filters.start}
+              />
+            </label><label class="field">
+              <span>Status date – end</span><input
+                type="date"
+                id="end"
+                max={today}
+                aria-describedby="date-help date-error"
+                aria-invalid={app.result.invalidDates ? 'true' : undefined}
+                bind:value={app.filters.end}
+              />
+            </label>
+            <p class="small muted" id="date-help">
+              {ready
+                ? 'Uses EPA STATUS_DT. Blank start; end is the import cutoff. Changing this filter does not retrieve newer EPA records.'
+                : 'Start is blank; end defaults to today. Uses EPA status dates.'}
+            </p>
+            <p id="date-error" class="field-error" hidden={!app.result.invalidDates}>
+              {app.result.invalidDates ? DATE_ERROR : ''}
+            </p>
+          </Accordion.Content>
+        </Accordion.Item>
+      </Accordion.Root>
       <div class="side-note">
         <strong>Seed treatment only.</strong> Grain-storage-only products and all deltamethrin products
         are excluded. Crop groups are not expanded into unverified uses.
@@ -356,13 +394,13 @@
           </span>{/if}
         <div class="result-controls">
           <ViewToggle />
-          <label class="small muted">
-            Sort <select id="sort" aria-label="Sort products" bind:value={app.filters.sort}>
-              {#each Object.entries(SORTS) as [value, sort] (value)}
-                <option {value}>{sort.label}</option>
-              {/each}
-            </select>
-          </label>
+          <FilterSelect
+            id="sort"
+            label="Sort"
+            inline
+            options={SORT_OPTIONS}
+            bind:value={app.filters.sort as string}
+          />
         </div>
       </div>
       <div id="applied" class="applied" role="group" aria-label="Applied product filters">
@@ -523,5 +561,53 @@
     margin-right: auto;
     color: var(--muted);
     font-size: 0.875rem;
+  }
+  /* Filter groups (Bits UI Accordion), styled like the legacy disclosures they replace. */
+  .filter :global(.filter-section) {
+    margin-top: 16px;
+    padding-top: 6px;
+    border-top: 1px solid var(--line);
+  }
+  .filter :global(.filter-section h3) {
+    margin: 0;
+    font: inherit;
+  }
+  .filter :global(.filter-section-trigger) {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    min-height: 44px;
+    padding: 8px 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: var(--ink);
+    font-size: 0.9375rem;
+    font-weight: 600;
+    line-height: 1.5;
+    text-align: left;
+  }
+  .filter :global(.filter-section-trigger:hover:not(:disabled)) {
+    background: transparent;
+    color: var(--green-dark);
+  }
+  .filter :global(.filter-section-trigger)::before {
+    content: '';
+    flex: none;
+    width: 0;
+    height: 0;
+    border-block: 5px solid transparent;
+    border-left: 7px solid currentColor;
+    transition: transform 0.15s;
+  }
+  .filter :global(.filter-section-trigger[data-state='open'])::before {
+    transform: rotate(90deg);
+  }
+  .filter :global(.filter-section-content) {
+    padding-bottom: 6px;
+  }
+  .filter :global(.select-field) {
+    margin: 12px 0;
   }
 </style>
