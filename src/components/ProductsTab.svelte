@@ -701,11 +701,25 @@
   .label-about summary {
     display: inline-flex;
     align-items: center;
+    gap: 8px;
+    list-style: none;
     min-height: 44px;
     color: var(--green-dark);
     font-size: 0.9375rem;
     font-weight: 600;
     cursor: pointer;
+  }
+  .label-about summary::-webkit-details-marker {
+    display: none;
+  }
+  .label-about summary::before {
+    content: '';
+    border-block: 5px solid transparent;
+    border-left: 7px solid currentColor;
+    transition: transform 0.15s;
+  }
+  .label-about[open] summary::before {
+    transform: rotate(90deg);
   }
   .label-about .label-help {
     max-width: 80ch;

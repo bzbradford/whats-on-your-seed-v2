@@ -150,7 +150,7 @@ Goal: make the products view scannable and the page less tall, keep the Oct 19 c
 4. [x] Sticky stack instead of an inner scroll panel: the tab bar pins as a thinner header once scrolled past; the search and toolbar row pin under it on desktop (one compact row while pinned); the filter sidebar sits below both; on phones only the tab bar pins. Pinned: 109 px at 1440 (tab bar 51 + head 58), 51 px at 390. Focus, anchors and scrollIntoView land below via `scroll-padding-top`. `src/lib/sticky.ts`: pin state from zero-height sentinels (so shrinking can't unpin), heights published as `--tabs-h`/`--head-h` only while pinned (stable offsets), and `flowKeeper` adds the lost height back as margin so the page height never changes (no pin/unpin loops at the end of short pages). `?embed`: the same sticky stack inside the iframe's scroller; no separate inner results panel (optional, not needed).
 5. [x] Card view caps ingredients like the List (first three + "N more"; all in the dialog). Shared rule `shownIngredientCount()` (all up to four, otherwise three); on cards "+N more" is a button that opens the dialog.
 6. [x] List view: the Purpose column wraps at slashes or spaces, never mid-word (`overflow-wrap: normal` on the column, `<wbr>` after "/"; e2e checks every line break).
-7. [ ] Review screenshots (`after2-*.png`) and e2e checks for the pinned header (desktop) and tab-bar-only pinning (390 px).
+7. [x] Review screenshots (`after2-*.png`) and e2e checks for the pinned header (desktop) and tab-bar-only pinning (390 px). Page height for 25 results: 1440 px cards 10,918 (was 11,372 after 4a; 14,597 before), list 4,123; 390 px cards 15,752, list 9,020. Pinned: 109 px at 1440, 51 px at 390.
 
 ### 4b. Shareable state and filtering (next batch)
 
