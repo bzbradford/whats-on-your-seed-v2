@@ -30,6 +30,8 @@
 
 ## Conventions
 
+- **Visual tweaks: fix first, the user reviews, tests follow.** For purely visual changes, make the change and let the user look at it in their own dev server (`pnpm dev`, usually running in their VS Code terminal) instead of producing screenshot sets. Once they're happy, update the tests to match and commit. Behaviour, data and accessibility changes still get tests in the same change.
+
 - Keep business logic out of `.svelte` files: put it in typed `src/lib/*.ts` modules with Vitest coverage. Components render state and dispatch.
 - Use relative/`import.meta.env.BASE_URL` paths, never root-absolute URLs (Pages serves under a subpath).
 - **Bits UI** (`bits-ui` 2.x, as in the v1 project) for controls that need it: `Select` (via `FilterSelect.svelte`), `Accordion` (filter groups), `ToggleGroup` (Card / List pill), `DropdownMenu` (the products "Download" menu, `DownloadMenu.svelte`: Results CSV `#export`, Label links CSV `#export-labels`, Print this view `#print-results`; other tabs keep a small Print button), `Tooltip` (via `HeaderTip.svelte`, inside a `Tooltip.Provider`). Keep native elements where they work as well (checkbox groups, date inputs, `<dialog>`, print). Style Bits parts from a scoped wrapper with `:global(.part-class)`; portalled parts (select lists, tooltips) use uniquely named global classes. A Bits `Select` treats `''` as "nothing selected", so "All …" options map to a sentinel (see `FilterSelect`). Keep keyboard and screen-reader behaviour at least as good as native, and cover it in e2e (`tests/e2e/app.spec.ts` "filter controls").

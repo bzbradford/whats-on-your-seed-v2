@@ -1053,3 +1053,37 @@ test('newer supplemental-only labeling is linked next to the full label', async 
   await expect(item).toHaveAttribute('href', url);
   await expect(item).toContainText('Supplemental label: new use');
 });
+
+test('switching tabs starts at the top of the new tab, not mid-page', async ({ page }) => {
+  await open(page);
+  // The new tab's content must start just under the tab bar, inside the viewport.
+  const gap = (id: string) =>
+    page.evaluate((panel) => {
+      const tabs = document.querySelector('.tabs')!.getBoundingClientRect();
+      const top = document.getElementById(panel)!.getBoundingClientRect().top;
+      return { gap: top - tabs.bottom, tabsBottom: tabs.bottom };
+    }, id);
+  // Click like a person: Playwright's locator.click() first scrolls the target into view,
+  // which (with the pinned header's scroll-padding) moves the page and hides the bug.
+  const clickTab = async (id: string) => {
+    const box = (await page.locator('#tab-' + id).boundingBox())!;
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  };
+  // From the hero, a tab switch leaves the scroll position alone.
+  await page.evaluate(() => scrollTo(0, 0));
+  await clickTab('guide');
+  expect(await page.evaluate(() => scrollY)).toBe(0);
+  // Deep in the products list → Comparison matrix → scroll a bit → back to products.
+  await clickTab('products');
+  await page.evaluate(() => scrollTo(0, 4000));
+  await clickTab('matrix');
+  let g = await gap('matrix');
+  expect(g.gap).toBeGreaterThanOrEqual(0);
+  expect(g.gap).toBeLessThan(40);
+  await page.evaluate(() => scrollBy(0, 200));
+  await clickTab('products');
+  g = await gap('products');
+  expect(g.gap).toBeGreaterThanOrEqual(0);
+  expect(g.gap).toBeLessThan(40);
+  expect(g.tabsBottom).toBeLessThan(80); // the tab bar is pinned at the top of the window
+});

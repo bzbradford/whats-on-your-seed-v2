@@ -261,11 +261,30 @@ export class AppState {
   async goTo(id: string, moveFocus = false): Promise<void> {
     if (!(VIEWS as readonly string[]).includes(id)) return;
     if (this.dialog) this.closeDialog(false);
+    // A new tab starts at the top of its content: if the page is scrolled past the tab
+    // bar (so it's pinned), jump back to where the bar sits; in the hero, stay put.
+    // Measure before swapping content: the browser's scroll anchoring moves the page as
+    // the old tab hides, so measuring afterwards misses the case.
+    const sentinel = document.querySelector('.tabs-sentinel');
+    const barTop = sentinel ? sentinel.getBoundingClientRect().top + window.scrollY : null;
+    const pastBar = this.view !== id && barTop !== null && window.scrollY > barTop;
     this.view = id as View;
     await tick();
-    // Phones: the tab row scrolls sideways; keep the active tab in view.
-    document.getElementById('tab-' + id)?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
-    if (moveFocus) focusById('tab-' + id);
+    if (pastBar) window.scrollTo({ top: barTop!, behavior: 'instant' });
+    // Phones: the tab row scrolls sideways; keep the active tab in view. Only the row
+    // scrolls: scrollIntoView would also move the page vertically (it honours the pinned
+    // header's scroll-padding) and undo the jump above.
+    const tab = document.getElementById('tab-' + id);
+    const row = tab?.parentElement;
+    if (tab && row && row.scrollWidth > row.clientWidth) {
+      const left = tab.offsetLeft - row.offsetLeft;
+      if (left < row.scrollLeft) row.scrollLeft = Math.max(0, left - 8);
+      else if (left + tab.offsetWidth > row.scrollLeft + row.clientWidth)
+        row.scrollLeft = left + tab.offsetWidth - row.clientWidth + 8;
+    }
+    // preventScroll: the tab is already visible, and focusing it would otherwise nudge the
+    // page down past the pinned header's scroll-padding.
+    if (moveFocus) focusById('tab-' + id, { preventScroll: true });
   }
 
   /** Hero shortcuts: open a tab and focus its search box. */
