@@ -224,7 +224,14 @@ Taken from the legacy `static/index.html`. Tick items when ported **and** tested
   - Product-level data comes from Kynetec (paid; e.g. its dealer-applied corn seed treatment study).
   - In-catalog proxies don't work: distributor-record counts rank only Bt traits (MON 810: 174), while CruiserMaxx, Poncho and Gaucho score 0.
 
-  Options: (a) a CPN-specialist-curated list per crop in `pipeline/reference/` (honest: "Widely used, per CPN specialists"); (b) Kynetec data if CPN or a member university has access. Decide on the source before building anything.
+  Options:
+  - (a) A CPN-specialist-curated list per crop in `pipeline/reference/` (honest: "Widely used, per CPN specialists").
+  - (b) Kynetec data. Ruled out by the user (2026-11-25): far too expensive.
+  - (c) **Our own popularity signal from usage analytics.** Log searches and product views (the v1 project already sends GA4 custom events `search`, `filter_change`, `view_product` from `src/lib/analytics.ts`). The pipeline would pull aggregated counts (e.g. product views over the last 90 days) through the GA4 Data API, using a service-account key as a GitHub secret, and publish a per-product score.
+    - Caveats: low traffic makes the ranking noisy, so set a minimum threshold and show it only once there's enough data. A "most viewed" default sort feeds on itself, so offer it as an opt-in sort or a badge rather than the default. It measures interest among this tool's users, not field use, so label it "Most viewed here". GA's cookies in a cross-origin iframe need `SameSite=None;Secure`, as v1 does, and privacy-blocking browsers undercount.
+    - A cheap first step: add the analytics events now (decide on the GA property: reuse v1's or a new one), let data accumulate, and decide on the ranking once there's a few months of traffic.
+
+  Decide on the source before building any ranking.
 
 - [ ] State registration selector: parked until a data source exists (see "Future: state registration").
 
