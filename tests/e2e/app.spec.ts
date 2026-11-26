@@ -301,9 +301,11 @@ test.describe('filters stay at hand', () => {
   test('desktop: the sidebar stays in view while scrolling the results', async ({ page }) => {
     await open(page);
     await page.evaluate(() => window.scrollTo(0, 4000));
+    // It sits just below the pinned tab bar and search + toolbar row.
     const box = await page.locator('#filters').boundingBox();
-    expect(box!.y).toBeGreaterThanOrEqual(0);
-    expect(box!.y).toBeLessThan(40);
+    const head = await page.locator('.results-head').boundingBox();
+    expect(box!.y).toBeGreaterThanOrEqual(head!.y + head!.height);
+    expect(box!.y).toBeLessThan(140);
     expect(await page.locator('#filters').evaluate((e) => getComputedStyle(e).position)).toBe(
       'sticky',
     );
@@ -404,6 +406,61 @@ test.describe('filter controls: keyboard and screen readers', () => {
     await expect(page.locator('.header-tip')).toContainText('resistance-group codes');
     await page.keyboard.press('Escape');
     await expect(page.locator('.header-tip')).toHaveCount(0);
+  });
+});
+
+test.describe('sticky stack (4a follow-up 4)', () => {
+  const rect = (page: Page, sel: string) =>
+    page.locator(sel).evaluate((e) => {
+      const r = e.getBoundingClientRect();
+      return { top: r.top, bottom: r.bottom, height: r.height };
+    });
+
+  test('desktop: the tab bar and the search + toolbar row stay pinned', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await open(page);
+    for (const view of ['Cards', 'List']) {
+      await page.getByRole('radio', { name: view }).click();
+      // Mid-page (the List is short; at its end the sidebar's container pushes it up).
+      await page.evaluate(() => window.scrollTo(0, 1200));
+      await expect(page.locator('.tabs')).toHaveClass(/stuck/);
+      await expect(page.locator('.results-head')).toHaveClass(/pinned/);
+      const tabs = await rect(page, '.tabs');
+      const head = await rect(page, '.results-head');
+      const filters = await rect(page, '#filters');
+      expect(tabs.top).toBe(0);
+      expect(head.top).toBeCloseTo(tabs.bottom, 0);
+      expect(head.bottom).toBeLessThanOrEqual(120);
+      expect(filters.top).toBeGreaterThanOrEqual(head.bottom);
+      await expect(page.locator('#query')).toBeInViewport();
+      await expect(page.locator('#download-menu')).toBeInViewport();
+      await expect(page.getByRole('tab', { name: 'Treatment guide' })).toBeInViewport();
+      await page.evaluate(() => window.scrollTo(0, 0));
+    }
+  });
+
+  test('phones: only the tab bar is pinned', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await open(page);
+    await page.evaluate(() => window.scrollTo(0, 3000));
+    await expect(page.locator('.tabs')).toHaveClass(/stuck/);
+    expect((await rect(page, '.tabs')).top).toBe(0);
+    await expect(page.locator('.results-head')).not.toHaveClass(/pinned/);
+    await expect(page.locator('#query')).not.toBeInViewport();
+    await expect(page.locator('#mobile-filter')).toBeInViewport();
+  });
+
+  test('focus returns below the pinned header', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await open(page);
+    const button = page.locator('.product-name').nth(12);
+    await button.click();
+    await expect(page.locator('#dialog[open]')).toBeVisible();
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.keyboard.press('Escape');
+    await expect(button).toBeFocused();
+    const pinned = (await rect(page, '.results-head')).bottom;
+    expect((await button.boundingBox())!.y).toBeGreaterThanOrEqual(pinned);
   });
 });
 

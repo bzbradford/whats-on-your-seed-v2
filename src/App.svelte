@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { flowKeeper, onScrollFrame, publishPinnedHeight } from './lib/sticky';
   import logo from './assets/cpn-logo-2022.png';
   import { AppState, type View } from './lib/app-state.svelte';
   import { setApp } from './lib/context';
@@ -21,6 +22,23 @@
       baseUrl: import.meta.env.BASE_URL,
     }),
   );
+
+  // Sticky stack: the tab bar pins at the top (thinner once stuck).
+  let tabsEl: HTMLElement | undefined = $state();
+  let tabsSentinel: HTMLElement | undefined = $state();
+  let tabsStuck = $state(false);
+  $effect(() => {
+    if (!tabsEl || !tabsSentinel) return;
+    const sentinel = tabsSentinel;
+    const stopKeeper = flowKeeper(tabsEl, 'stuck');
+    const height = publishPinnedHeight(tabsEl, '--tabs-h', 'stuck');
+    const stopScroll = onScrollFrame(() => (tabsStuck = sentinel.getBoundingClientRect().top < 0));
+    return () => {
+      stopKeeper();
+      height.destroy();
+      stopScroll();
+    };
+  });
 
   onMount(() => {
     void app.load();
@@ -115,8 +133,16 @@
   </div>
 </section>
 <main class="shell" id="main" tabindex="-1">
-  <!-- svelte-ignore a11y_interactive_supports_focus -->
-  <div class="tabs" aria-label="Database sections" role="tablist" onkeydown={onTabKeydown}>
+  <div class="tabs-sentinel" aria-hidden="true" bind:this={tabsSentinel}></div>
+  <div
+    class="tabs"
+    class:stuck={tabsStuck}
+    aria-label="Database sections"
+    role="tablist"
+    tabindex="-1"
+    bind:this={tabsEl}
+    onkeydown={onTabKeydown}
+  >
     {#each TABS as tab (tab.id)}
       <button
         role="tab"
@@ -251,5 +277,38 @@
   }
   :global(html[data-view='embed']) .hero-bottom {
     margin: 0;
+  }
+  /*
+   * Sticky stack (4a follow-up 4). The tab bar pins at the top and slims down once stuck;
+   * its background reaches the window edges. Focus, anchors and scrollIntoView land below
+   * the pinned parts via scroll-padding-top (heights from src/lib/sticky.ts).
+   */
+  :global(:root) {
+    scroll-padding-top: calc(var(--tabs-h, 51px) + var(--head-h, 0px) + 1rem);
+  }
+  :global(html[data-view='embed'] body) {
+    scroll-padding-top: calc(var(--tabs-h, 51px) + var(--head-h, 0px) + 1rem);
+  }
+  .tabs-sentinel {
+    height: 0;
+  }
+  @media screen {
+    .tabs {
+      position: sticky;
+      top: 0;
+      z-index: 30;
+      background: var(--paper);
+      box-shadow: 0 0 0 100vmax var(--paper);
+      clip-path: inset(0 -100vmax);
+    }
+    .tabs.stuck {
+      padding-block: 6px;
+      border-bottom: 1px solid var(--line);
+      margin-bottom: 14px;
+    }
+    .tabs.stuck button {
+      min-height: 38px;
+      padding-block: 6px;
+    }
   }
 </style>

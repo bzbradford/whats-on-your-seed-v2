@@ -22,6 +22,7 @@
   import { epaDataAsOf } from '../lib/currency';
   import { fmt, localDate } from '../lib/format';
   import { printCurrentView } from '../lib/print';
+  import { DESKTOP, flowKeeper, onScrollFrame, publishPinnedHeight } from '../lib/sticky';
   import { Accordion } from 'bits-ui';
   import FilterSelect, { type SelectOption } from './FilterSelect.svelte';
   import Icon from './Icon.svelte';
@@ -31,6 +32,40 @@
   import ViewToggle from './ViewToggle.svelte';
 
   const app = getApp();
+
+  // Sticky stack (desktop): the search and toolbar row pin under the tab bar, as one
+  // compact row while pinned. Phones pin only the tab bar.
+  let headEl: HTMLElement | undefined = $state();
+  let headSentinel: HTMLElement | undefined = $state();
+  let headPinned = $state(false);
+  $effect(() => {
+    if (!headEl || !headSentinel) return;
+    const sentinel = headSentinel;
+    const desktop = matchMedia(DESKTOP);
+    const tabsBottom = () =>
+      document.querySelector('.tabs.stuck')?.getBoundingClientRect().bottom ?? 0;
+    const stopKeeper = flowKeeper(headEl, 'pinned');
+    const height = publishPinnedHeight(headEl, '--head-h', 'pinned', () => desktop.matches);
+    headHeight = height;
+    const stopScroll = onScrollFrame(
+      () =>
+        (headPinned =
+          desktop.matches &&
+          sentinel.offsetParent !== null &&
+          sentinel.getBoundingClientRect().top < tabsBottom()),
+    );
+    return () => {
+      stopKeeper();
+      height.destroy();
+      stopScroll();
+    };
+  });
+  let headHeight: ReturnType<typeof publishPinnedHeight> | undefined;
+  $effect(() => {
+    // Leaving or returning to the products tab: the head stops or starts counting.
+    void app.view;
+    queueMicrotask(() => headHeight?.update());
+  });
 
   const opts = (values: string[]): SelectOption[] => values.map((v) => ({ value: v, label: v }));
   const SIGNAL_OPTIONS: SelectOption[] = [
@@ -366,40 +401,43 @@
       </button>
     </aside>
     <div class="results-column">
-      <div class="toolbar">
-        <div class="search">
-          <label for="query">Search products and ingredients</label><span aria-hidden="true">
-            <Icon name="search" />
-          </span><input
-            id="query"
-            type="search"
-            placeholder="Search a product, active ingredient, or EPA number…"
-            bind:value={app.filters.query}
-          />
+      <div class="head-sentinel" aria-hidden="true" bind:this={headSentinel}></div>
+      <div class="results-head" class:pinned={headPinned} bind:this={headEl}>
+        <div class="toolbar">
+          <div class="search">
+            <label for="query">Search products and ingredients</label><span aria-hidden="true">
+              <Icon name="search" />
+            </span><input
+              id="query"
+              type="search"
+              placeholder="Search a product, active ingredient, or EPA number…"
+              bind:value={app.filters.query}
+            />
+          </div>
         </div>
-      </div>
-      <div class="result-heading">
-        <h3 id="count" tabindex="-1">
-          {app.loadState === 'unavailable' ? 'No live catalog' : ready ? app.count : ''}
-        </h3>
-        {#if ready && !app.result.invalidDates}<span class="result-meta">
-            · EPA data as of {fmt(epaDataAsOf(app.catalog))}
-          </span>{/if}
-        <div class="result-controls">
-          <ViewToggle />
-          <FilterSelect
-            id="sort"
-            label="Sort"
-            inline
-            options={SORT_OPTIONS}
-            bind:value={app.filters.sort as string}
-          />
-          <DownloadMenu
-            canExport={ready && n > 0}
-            onResults={exportResults}
-            onLabels={exportLabels}
-            onPrint={() => printCurrentView(app.view)}
-          />
+        <div class="result-heading">
+          <h3 id="count" tabindex="-1">
+            {app.loadState === 'unavailable' ? 'No live catalog' : ready ? app.count : ''}
+          </h3>
+          {#if ready && !app.result.invalidDates}<span class="result-meta">
+              · EPA data as of {fmt(epaDataAsOf(app.catalog))}
+            </span>{/if}
+          <div class="result-controls">
+            <ViewToggle />
+            <FilterSelect
+              id="sort"
+              label="Sort"
+              inline
+              options={SORT_OPTIONS}
+              bind:value={app.filters.sort as string}
+            />
+            <DownloadMenu
+              canExport={ready && n > 0}
+              onResults={exportResults}
+              onLabels={exportLabels}
+              onPrint={() => printCurrentView(app.view)}
+            />
+          </div>
         </div>
       </div>
       <div id="applied" class="applied" role="group" aria-label="Applied product filters">
@@ -535,10 +573,57 @@
   @media screen and (min-width: 701px) {
     .filter {
       position: sticky;
-      top: 16px;
-      max-height: calc(100vh - 32px - var(--comparison-clearance, 0px));
+      top: calc(var(--tabs-h, 51px) + var(--head-h, 58px) + 12px);
+      max-height: calc(
+        100vh - var(--tabs-h, 51px) - var(--head-h, 58px) - 24px - var(--comparison-clearance, 0px)
+      );
       overflow-y: auto;
       overscroll-behavior: contain;
+    }
+    /* Search + toolbar row: pinned under the tab bar. */
+    .results-head {
+      position: sticky;
+      top: var(--tabs-h, 51px);
+      z-index: 20;
+      background: var(--paper);
+    }
+    .results-head.pinned {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px 14px;
+      padding: 6px 0 8px;
+      box-shadow: 0 8px 10px -10px #233b2d40;
+    }
+    .results-head.pinned .toolbar {
+      flex: 1 1 13rem;
+      min-width: 0;
+    }
+    .results-head.pinned .toolbar label {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+    .results-head.pinned .toolbar input {
+      min-height: 40px;
+      padding-block: 6px;
+    }
+    .results-head.pinned .toolbar :global(.icon) {
+      margin-bottom: -3px;
+    }
+    .results-head.pinned .result-heading {
+      flex: 0 1 auto;
+      margin: 0;
+    }
+    .results-head.pinned .result-meta {
+      display: none;
+    }
+    .results-head.pinned :global(.select-trigger) {
+      min-width: 10rem;
+      min-height: 40px;
     }
   }
   @media screen and (max-width: 700px) {
