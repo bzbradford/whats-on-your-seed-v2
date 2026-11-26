@@ -2,7 +2,12 @@
   import { getApp } from '../lib/context';
   import { fmt, shortSite } from '../lib/format';
   import { labelAccess } from '../lib/labels';
-  import { ingredientsEyebrow, moaGroups, quality } from '../lib/product-facts';
+  import {
+    ingredientsEyebrow,
+    moaGroups,
+    quality,
+    shownIngredientCount,
+  } from '../lib/product-facts';
   import type { Product } from '../lib/types';
   import ExtLink from './ExtLink.svelte';
   import LabelAction from './LabelAction.svelte';
@@ -14,6 +19,7 @@
   const app = getApp();
   const reference = $derived(app.catalog.ingredient_reference);
   const selected = $derived(app.selected.includes(p.id));
+  const shown = $derived(shownIngredientCount(p.ingredients.length));
   /** FRAC / IRAC codes, only when the ingredients have reviewed assignments. */
   const groups = $derived(
     [
@@ -57,7 +63,7 @@
     <div>
       <div class="eyebrow">{ingredientsEyebrow(p)}</div>
       <div class="ingredients">
-        {#each p.ingredients as a, i (i)}
+        {#each p.ingredients.slice(0, shown) as a, i (i)}
           <button
             class="ingredient-pill"
             aria-haspopup="dialog"
@@ -69,6 +75,15 @@
         {:else}
           <span class="small muted">Not available in source entry</span>
         {/each}
+        {#if p.ingredients.length > shown}<button
+            class="more-ingredients"
+            aria-haspopup="dialog"
+            data-detail={p.id}
+            aria-label="All {p.ingredients.length} ingredients of {p.name}"
+            onclick={() => app.openDialog({ kind: 'product', id: p.id })}
+          >
+            +{p.ingredients.length - shown} more
+          </button>{/if}
       </div>
     </div>
     <div>
@@ -159,5 +174,19 @@
     .product .product-bottom {
       padding: 6px 16px;
     }
+  }
+  .more-ingredients {
+    min-height: 32px;
+    padding: 2px 0;
+    border: 0;
+    background: none;
+    color: var(--green-dark);
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .more-ingredients:hover:not(:disabled) {
+    background: none;
   }
 </style>

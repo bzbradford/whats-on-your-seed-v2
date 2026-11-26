@@ -3,7 +3,7 @@
   import { ariaSort, columnSort, type SortColumn } from '../lib/filters';
   import { cropFamilies, fmt, shortSite } from '../lib/format';
   import { labelAccess } from '../lib/labels';
-  import { moaGroups, signalClass, signalText } from '../lib/product-facts';
+  import { moaGroups, shownIngredientCount, signalClass, signalText } from '../lib/product-facts';
   import type { Product } from '../lib/types';
   import { Tooltip } from 'bits-ui';
   import ExtLink from './ExtLink.svelte';
@@ -16,11 +16,7 @@
   let { products }: { products: Product[] } = $props();
   const app = getApp();
   const reference = $derived(app.catalog.ingredient_reference);
-  /**
-   * Up to four ingredients are listed; longer lists (mostly stacked Bt traits) show three
-   * and count the rest ("+3 more"), which the dialog lists in full.
-   */
-  const shown = (p: Product) => (p.ingredients.length > 4 ? 3 : p.ingredients.length);
+  const shown = (p: Product) => shownIngredientCount(p.ingredients.length);
 
   const COLUMNS: { key: SortColumn | null; label: string; className: string; tip?: string }[] = [
     { key: 'name', label: 'Product', className: 'col-product' },

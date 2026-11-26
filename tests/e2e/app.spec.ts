@@ -191,6 +191,24 @@ test.describe('products', () => {
     await page.keyboard.press('Escape');
   });
 
+  test('cards show at most three of a long ingredient list, plus a count', async ({ page }) => {
+    // Many stacked Bt-trait products list more than four ingredients.
+    const card = page
+      .locator('.product')
+      .filter({ has: page.locator('.more-ingredients') })
+      .first();
+    await expect(card.locator('.ingredient-pill')).toHaveCount(3);
+    const more = card.locator('.more-ingredients');
+    const extra = Number((await more.textContent())!.match(/\d+/)![0]);
+    await more.click();
+    await expect(page.locator('#dialog-body table tbody tr')).toHaveCount(3 + extra);
+    await page.keyboard.press('Escape');
+    await expect(more).toBeFocused();
+    await page.locator('#query').fill('100-1508');
+    await expect(page.locator('.product .ingredient-pill')).toHaveCount(4);
+    await expect(page.locator('.product .more-ingredients')).toHaveCount(0);
+  });
+
   test('records without ingredients carry their own flag, in both views', async ({ page }) => {
     await page.locator('#query').fill('5905-491-38167');
     await expect(page.locator('.product .record-flag')).toHaveText(
