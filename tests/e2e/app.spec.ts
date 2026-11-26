@@ -206,6 +206,8 @@ test.describe('products', () => {
     await expect(page.locator('.product .label-action')).toContainText('Find product label');
     // The per-product note is in the dialog; the cards share one explanation.
     await expect(page.locator('.product .label-meta')).toHaveCount(0);
+    await expect(page.locator('#label-help')).toBeHidden();
+    await page.getByText('About label links', { exact: true }).click();
     await expect(page.locator('#label-help')).toContainText('acceptance letter');
     await page.locator('.product-name').click();
     await expect(page.locator('#dialog-body .label-panel')).toContainText('5905-491-38167');
@@ -636,6 +638,7 @@ test.describe('guides and sources', () => {
             filters: shown('#filters'),
             footer: shown('footer.disclaimer'),
             disclaimerOpen: (document.getElementById('tool-disclaimer') as HTMLDetailsElement).open,
+            labelAboutOpen: (document.querySelector('.label-about') as HTMLDetailsElement).open,
             button: shown(`#${id} .print-view`),
           };
         };
@@ -648,6 +651,7 @@ test.describe('guides and sources', () => {
         filters: false,
         footer: true,
         disclaimerOpen: true,
+        labelAboutOpen: view === 'products',
         button: false,
       });
       expect(

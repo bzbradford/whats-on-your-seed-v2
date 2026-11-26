@@ -167,15 +167,18 @@
       side-by-side view.
     </p>
   </div>
-  <p id="label-help" class="small muted label-help">
-    <strong>EPA-accepted label (PDF)</strong> opens EPA’s file for that exact registration: EPA’s
-    acceptance letter first, then the EPA-accepted master label, which can differ from the label on
-    the container. <strong>Find product label</strong> opens EPA’s label search where there is no
-    direct file (distributor products: search the full EPA number, or ask the registrant for the
-    marketed label). Newer supplemental labeling is linked separately. Each product’s details give
-    its file date. PDFs need an internet connection.
-    <strong>Export label links</strong> saves a CSV for all matching products across every page.
-  </p>
+  <details class="label-about">
+    <summary>About label links</summary>
+    <p id="label-help" class="small muted label-help">
+      <strong>EPA-accepted label (PDF)</strong> opens EPA’s file for that exact registration: EPA’s
+      acceptance letter first, then the EPA-accepted master label, which can differ from the label
+      on the container. <strong>Find product label</strong> opens EPA’s label search where there is
+      no direct file (distributor products: search the full EPA number, or ask the registrant for
+      the marketed label). Newer supplemental labeling is linked separately. Each product’s details
+      give its file date. PDFs need an internet connection.
+      <strong>Export label links</strong> saves a CSV for all matching products across every page.
+    </p>
+  </details>
   <button
     id="mobile-filter"
     class="mobile-filters"
@@ -609,5 +612,27 @@
   }
   .filter :global(.select-field) {
     margin: 12px 0;
+  }
+  /* 4a follow-up 2: the label explanation is a one-line disclosure (open when printing). */
+  .label-about {
+    margin: -6px 0 14px;
+  }
+  .label-about summary {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    color: var(--green-dark);
+    font-size: 0.9375rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .label-about .label-help {
+    max-width: 80ch;
+    margin: 0 0 8px;
+  }
+  @media print {
+    .label-about .label-help {
+      display: block !important;
+    }
   }
 </style>
