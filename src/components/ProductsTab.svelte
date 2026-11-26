@@ -167,6 +167,15 @@
       side-by-side view.
     </p>
   </div>
+  <p id="label-help" class="small muted label-help">
+    <strong>EPA-accepted label (PDF)</strong> opens EPA’s file for that exact registration: EPA’s
+    acceptance letter first, then the EPA-accepted master label, which can differ from the label on
+    the container. <strong>Find product label</strong> opens EPA’s label search where there is no
+    direct file (distributor products: search the full EPA number, or ask the registrant for the
+    marketed label). Newer supplemental labeling is linked separately. Each product’s details give
+    its file date. PDFs need an internet connection.
+    <strong>Export label links</strong> saves a CSV for all matching products across every page.
+  </p>
   <button
     id="mobile-filter"
     class="mobile-filters"
@@ -352,7 +361,7 @@
         Show results
       </button>
     </aside>
-    <div>
+    <div class="results-column">
       <div class="toolbar">
         <div class="search">
           <label for="query">Search products and ingredients</label><span aria-hidden="true">
@@ -364,27 +373,7 @@
             bind:value={app.filters.query}
           />
         </div>
-        <button id="export" class="export" disabled={!ready || !n} onclick={exportResults}>
-          <Icon name="download" />Export results
-        </button><button
-          id="export-labels"
-          class="export"
-          aria-describedby="label-help"
-          disabled={!ready || !n}
-          onclick={exportLabels}
-        >
-          <Icon name="download" />Export label links
-        </button><PrintViewButton />
       </div>
-      <p id="label-help" class="small muted label-help">
-        <strong>EPA-accepted label (PDF)</strong> opens EPA’s file for that exact registration:
-        EPA’s acceptance letter first, then the EPA-accepted master label, which can differ from the
-        label on the container. <strong>Find product label</strong> opens EPA’s label search where
-        there is no direct file (distributor products: search the full EPA number, or ask the
-        registrant for the marketed label). Newer supplemental labeling is linked separately. Each
-        product’s details give its file date. PDFs need an internet connection.
-        <strong>Export label links</strong> saves a CSV for all matching products across every page.
-      </p>
       <div class="result-heading">
         <h3 id="count" tabindex="-1">
           {app.loadState === 'unavailable' ? 'No live catalog' : ready ? app.count : ''}
@@ -401,6 +390,17 @@
             options={SORT_OPTIONS}
             bind:value={app.filters.sort as string}
           />
+          <button id="export" class="export" disabled={!ready || !n} onclick={exportResults}>
+            <Icon name="download" />Export results
+          </button><button
+            id="export-labels"
+            class="export"
+            aria-describedby="label-help"
+            disabled={!ready || !n}
+            onclick={exportLabels}
+          >
+            <Icon name="download" />Export label links
+          </button><PrintViewButton />
         </div>
       </div>
       <div id="applied" class="applied" role="group" aria-label="Applied product filters">

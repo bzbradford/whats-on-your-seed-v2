@@ -142,6 +142,16 @@ Goal: make the products view scannable and the page less tall, keep the Oct 19 c
 
    Done: screenshots in the session scratchpad (`layout-review/before-*.png` from `main`, `after-*.png`), at 1440 and 390 px: products top, products scrolled (both views), a product dialog, `?embed`. Page height for 25 results (current catalog): 1440 px cards 14,597 → 11,372, list 4,253; 390 px cards 23,268 → 16,860, list 9,292. e2e covers both views (pill, rows, sorting, sticky headers, phone stacking, flags).
 
+### 4a follow-up (user review, 2026-11-25; branch `layout-density`)
+
+1. [x] Products column order: heading and intro, the label explanation, the search directly above the results, then one results toolbar row (count · "EPA data as of …" · Cards/List pill · Sort · Download menu), then the results.
+2. [ ] The label explanation becomes a collapsed "About label links" disclosure under the intro (closed by default at all widths, open in print).
+3. [ ] Export and print become one compact "Download ▾" menu (Bits `DropdownMenu`) in the toolbar row.
+4. [ ] Sticky stack instead of an inner scroll panel: the tab bar pins as a thinner header once scrolled past; the search and toolbar row pin under it on desktop; the filter sidebar sits below both; on phones only the tab bar pins; about 110 px pinned on desktop; anchors and focus land below the pinned header. In `?embed` only, the results may scroll inside a panel sized to the iframe.
+5. [ ] Card view caps ingredients like the List (first three + "N more"; all in the dialog).
+6. [ ] List view: the Purpose column wraps at slashes or spaces, never mid-word.
+7. [ ] Review screenshots (`after2-*.png`) and e2e checks for the pinned header (desktop) and tab-bar-only pinning (390 px).
+
 ### 4b. Shareable state and filtering (next batch)
 
 - Search, filters, sort, view mode and tab in the URL (shareable links, back button, pre-filtered embeds such as `?embed&crop=soybeans`)
