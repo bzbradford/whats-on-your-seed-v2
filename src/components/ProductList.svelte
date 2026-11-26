@@ -204,10 +204,10 @@
     text-align: left;
     overflow-wrap: anywhere;
   }
-  /* Sticky column headers (relative to the page). */
+  /* Sticky column headers, just below the pinned tab bar and search + toolbar row. */
   .product-list thead th {
     position: sticky;
-    top: 0;
+    top: calc(var(--tabs-h, 51px) + var(--head-h, 58px));
     z-index: 2;
     background: #25472f;
     color: #fff;

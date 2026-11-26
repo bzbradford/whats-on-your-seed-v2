@@ -453,6 +453,11 @@ test.describe('sticky stack (4a follow-up 4)', () => {
       await expect(page.locator('#query')).toBeInViewport();
       await expect(page.locator('#download-menu')).toBeInViewport();
       await expect(page.getByRole('tab', { name: 'Treatment guide' })).toBeInViewport();
+      if (view === 'List') {
+        // The list's column headers stick just below the pinned stack.
+        const th = await rect(page, 'thead th.col-product');
+        expect(th.top).toBeCloseTo(head.bottom, 0);
+      }
       await page.evaluate(() => window.scrollTo(0, 0));
     }
   });
