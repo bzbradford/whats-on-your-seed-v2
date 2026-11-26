@@ -553,6 +553,36 @@ test.describe('list view', () => {
     ).toBe('sticky');
   });
 
+  test('purposes wrap at spaces or slashes, never mid-word', async ({ page }) => {
+    await page.getByRole('radio', { name: 'List' }).click();
+    await page.locator('#query').fill('Smartstax Pro Enlist');
+    const purpose = page.locator('.product-row .row-purpose').first();
+    await expect(purpose).toHaveText('Nonviable Microbial/Transgenic Plant');
+    expect(await purpose.locator('wbr').count()).toBe(1);
+    // Every line break falls at a space or right after "/".
+    const breaksMidWord = await purpose.evaluate((el) => {
+      const text = el.textContent!;
+      const range = document.createRange();
+      let lastTop = -1;
+      let offset = 0;
+      const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+      for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+        for (let i = 0; i < node.textContent!.length; i++, offset++) {
+          range.setStart(node, i);
+          range.setEnd(node, i + 1);
+          const top = Math.round(range.getBoundingClientRect().top);
+          if (lastTop >= 0 && top > lastTop) {
+            const before = text[offset - 1];
+            if (before !== ' ' && before !== '/' && text[offset] !== ' ') return true;
+          }
+          lastTop = top;
+        }
+      }
+      return false;
+    });
+    expect(breaksMidWord).toBe(false);
+  });
+
   test('phones: rows stack without sideways scrolling', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.getByRole('radio', { name: 'List' }).click();

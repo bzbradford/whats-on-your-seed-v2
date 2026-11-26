@@ -148,7 +148,9 @@
               </span>{/if}
           </td>
           <td class="col-purpose">
-            {#each p.purposes as purpose (purpose)}<span class="row-purpose">{purpose}</span>{/each}
+            {#each p.purposes as purpose (purpose)}<span class="row-purpose">
+                {#each purpose.split('/') as part, k (k)}{#if k}/<wbr />{/if}{part}{/each}
+              </span>{/each}
           </td>
           <td class="col-signal">
             <span class="row-signal {signalClass(p)}">{signalText(p)}</span>
@@ -323,6 +325,11 @@
   .row-purpose {
     display: block;
     font-size: 0.8125rem;
+  }
+  /* Purposes wrap at spaces or after "/" (a <wbr>), never mid-word. */
+  .product-list .col-purpose {
+    overflow-wrap: normal;
+    word-break: normal;
   }
   .row-more {
     color: var(--muted);
