@@ -1,9 +1,10 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { flowKeeper, onScrollFrame, publishPinnedHeight } from './lib/sticky';
   import logo from './assets/cpn-logo-2022.png';
   import { AppState, type View } from './lib/app-state.svelte';
   import { setApp } from './lib/context';
-  import { heroModeText, loadedNotice, updateWarning } from './lib/currency';
+  import { heroModeText, updateWarning } from './lib/currency';
   import IconSprite from './components/IconSprite.svelte';
   import Icon, { type IconName } from './components/Icon.svelte';
   import ProductsTab from './components/ProductsTab.svelte';
@@ -22,6 +23,23 @@
     }),
   );
 
+  // Sticky stack: the tab bar pins at the top (thinner once stuck).
+  let tabsEl: HTMLElement | undefined = $state();
+  let tabsSentinel: HTMLElement | undefined = $state();
+  let tabsStuck = $state(false);
+  $effect(() => {
+    if (!tabsEl || !tabsSentinel) return;
+    const sentinel = tabsSentinel;
+    const stopKeeper = flowKeeper(tabsEl, 'stuck');
+    const height = publishPinnedHeight(tabsEl, '--tabs-h', 'stuck');
+    const stopScroll = onScrollFrame(() => (tabsStuck = sentinel.getBoundingClientRect().top < 0));
+    return () => {
+      stopKeeper();
+      height.destroy();
+      stopScroll();
+    };
+  });
+
   onMount(() => {
     void app.load();
   });
@@ -34,10 +52,11 @@
     { id: 'data', label: 'Sources & updates', icon: 'source' },
   ];
 
-  const notice = $derived(
-    updateWarning(app.flags, app.status) ??
-      loadedNotice(app.catalog, app.status, app.flags.usingEmbeddedSnapshot),
-  );
+  // 4a.5: the notice is for loading, failures and warnings only. When the catalog loads
+  // normally it stays empty (an always-present live region, visually collapsed); the data
+  // date sits by the result count and the details are in the footer and Sources tab.
+  const warning = $derived(updateWarning(app.flags, app.status));
+  const quietNotice = $derived(app.loadState === 'ready' && !warning);
 
   function onTabKeydown(event: KeyboardEvent) {
     if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
@@ -114,22 +133,16 @@
   </div>
 </section>
 <main class="shell" id="main" tabindex="-1">
-  <div class="start-strip" aria-label="How to use this tool">
-    <div class="start-step">
-      <span class="step-number" aria-hidden="true">01</span>
-      <p><strong>Find a product</strong>Search by name, ingredient, or crop.</p>
-    </div>
-    <div class="start-step">
-      <span class="step-number" aria-hidden="true">02</span>
-      <p><strong>Understand its purpose</strong>Explore ingredients and groups.</p>
-    </div>
-    <div class="start-step">
-      <span class="step-number" aria-hidden="true">03</span>
-      <p><strong>Compare the facts</strong>Review up to four formulations.</p>
-    </div>
-  </div>
-  <!-- svelte-ignore a11y_interactive_supports_focus -->
-  <div class="tabs" aria-label="Database sections" role="tablist" onkeydown={onTabKeydown}>
+  <div class="tabs-sentinel" aria-hidden="true" bind:this={tabsSentinel}></div>
+  <div
+    class="tabs"
+    class:stuck={tabsStuck}
+    aria-label="Database sections"
+    role="tablist"
+    tabindex="-1"
+    bind:this={tabsEl}
+    onkeydown={onTabKeydown}
+  >
     {#each TABS as tab (tab.id)}
       <button
         role="tab"
@@ -144,7 +157,7 @@
       </button>
     {/each}
   </div>
-  <div class="notice" id="notice" role="status" aria-atomic="true">
+  <div class="notice" class:quiet-notice={quietNotice} id="notice" role="status" aria-atomic="true">
     {#if app.loadState === 'loading'}
       Loading the database…
     {:else if app.loadState === 'unavailable'}
@@ -152,8 +165,8 @@
         The verified catalog has not been connected. No example records are being shown as live
         data. The tool will retry automatically.
       </span>
-    {:else}
-      <strong>{notice.title}</strong><span>{notice.message}</span>
+    {:else if warning}
+      <strong>{warning.title}</strong><span>{warning.message}</span>
     {/if}
   </div>
   <ProductsTab />
@@ -173,19 +186,129 @@
 
 <style>
   /*
-   * The Oct 19 hero reserved a second grid column (and 34% of the mobile width) for
-   * decorative art that isn't shipped. Let the copy take the full width. The paragraph
-   * keeps a readable measure: 740px, the cap in the legacy base hero rule.
+   * Hero (4a.2 of Phase 3c, 4a.4): full width without the art; the title on one line; a
+   * shorter hero; the 01/02/03 strip is gone (the tabs say the same). The paragraph keeps
+   * a readable 740px measure.
    */
   @media screen {
     .hero .shell {
       grid-template-columns: minmax(0, 1fr);
+      padding-block: 26px 24px;
     }
     .hero h1 {
       max-width: none;
+      margin: 10px 0 12px;
+      font-size: clamp(2rem, 4.2vw, 3.4rem);
+      line-height: 1.05;
+    }
+    .hero h1 span {
+      display: inline;
     }
     .hero p {
       max-width: 740px;
+    }
+    .hero-actions {
+      margin-top: 16px;
+    }
+    .hero-bottom {
+      margin-top: 14px;
+    }
+    /* The step strip used to separate hero and tabs. */
+    .tabs {
+      margin-top: 8px;
+    }
+  }
+  @media screen and (max-width: 700px) {
+    .hero .shell {
+      padding-block: 20px;
+    }
+    .hero h1 {
+      max-width: none;
+      font-size: clamp(1.625rem, 7.6vw, 2.4rem);
+      margin-bottom: 12px;
+    }
+    /* Tabs: one row that scrolls sideways instead of a two-column grid. */
+    .tabs {
+      display: flex;
+      flex-wrap: nowrap;
+      gap: 6px;
+      overflow-x: auto;
+      overscroll-behavior-x: contain;
+      scrollbar-width: thin;
+      padding-block: 12px;
+    }
+    .tabs button,
+    .tabs button:last-child {
+      flex: none;
+      grid-column: auto;
+      justify-content: center;
+    }
+  }
+  /* Empty notice: keep the live region in the page but take no space. */
+  .notice.quiet-notice {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    border: 0;
+  }
+  /* ?embed: the hero shrinks to a slim banner (title and data line only). */
+  :global(html[data-view='embed']) .hero .shell {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 20px;
+    padding-block: 10px;
+  }
+  :global(html[data-view='embed']) .hero-copy {
+    display: contents;
+  }
+  :global(html[data-view='embed']) .hero h1 {
+    margin: 0;
+    font-size: 1.5rem;
+  }
+  :global(html[data-view='embed']) .hero small,
+  :global(html[data-view='embed']) .hero p,
+  :global(html[data-view='embed']) .hero-actions {
+    display: none;
+  }
+  :global(html[data-view='embed']) .hero-bottom {
+    margin: 0;
+  }
+  /*
+   * Sticky stack (4a follow-up 4). The tab bar pins at the top and slims down once stuck;
+   * its background reaches the window edges. Focus, anchors and scrollIntoView land below
+   * the pinned parts via scroll-padding-top (heights from src/lib/sticky.ts).
+   */
+  :global(:root) {
+    scroll-padding-top: calc(var(--tabs-h, 51px) + var(--head-h, 0px) + 1rem);
+  }
+  :global(html[data-view='embed'] body) {
+    scroll-padding-top: calc(var(--tabs-h, 51px) + var(--head-h, 0px) + 1rem);
+  }
+  .tabs-sentinel {
+    height: 0;
+  }
+  @media screen {
+    .tabs {
+      position: sticky;
+      top: 0;
+      z-index: 30;
+      background: var(--paper);
+      box-shadow: 0 0 0 100vmax var(--paper);
+      clip-path: inset(0 -100vmax);
+    }
+    .tabs.stuck {
+      padding-block: 6px;
+      border-bottom: 1px solid var(--line);
+      margin-bottom: 14px;
+    }
+    .tabs.stuck button {
+      min-height: 38px;
+      padding-block: 6px;
     }
   }
 </style>

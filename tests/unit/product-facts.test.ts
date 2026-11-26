@@ -5,6 +5,7 @@ import {
   moaGroups,
   quality,
   ref,
+  shownIngredientCount,
   rupText,
   signalClass,
   signalKey,
@@ -85,5 +86,11 @@ describe('ingredient-data quality', () => {
     expect(quality({ ...product('100-1508'), ingredient_quality: q, epa_verified: verified })).toBe(
       text,
     );
+  });
+});
+
+describe('shownIngredientCount', () => {
+  it('shows up to four, otherwise three and counts the rest', () => {
+    expect([0, 1, 4, 5, 9].map(shownIngredientCount)).toEqual([0, 1, 4, 3, 3]);
   });
 });

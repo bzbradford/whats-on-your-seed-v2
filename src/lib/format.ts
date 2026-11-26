@@ -38,6 +38,21 @@ export function shortSite(site: string): string {
   return site.replace(/ \(seed treatment\)/gi, '');
 }
 
+/**
+ * Crop families for compact displays: "Cotton (acid delinted)" and "Cotton Seed (Fuzzy)"
+ * become "Cotton", "Corn (field)" becomes "Corn", "Soybeans, Edible (…)" becomes
+ * "Soybeans"; others keep their short site name. De-duplicated, in site order. The exact
+ * EPA sites stay in the card and dialog.
+ */
+export function cropFamilies(sites: string[]): string[] {
+  const family = (site: string) => {
+    const short = shortSite(site);
+    const match = short.match(/^(Corn|Cotton|Soybeans)\b/);
+    return match ? match[1] : short;
+  };
+  return [...new Set(sites.map(family))];
+}
+
 /** Only https URLs are linked; anything else becomes '#'. */
 export function safeUrl(url: unknown): string {
   try {

@@ -108,26 +108,49 @@ After sign-off, parity was retired and these landed one commit each, with tests:
 
 Goal: make the products view scannable and the page less tall, keep the Oct 19 character, and introduce Bits UI where it improves controls. Now that parity is retired, styling changes go in scoped component styles on top of `legacy.css`.
 
-1. **Card / List view pill.** A segmented pill toggle (Bits UI `ToggleGroup`) switches between:
+1. [x] **Card / List view pill.** A segmented pill toggle (Bits UI `ToggleGroup`) switches between:
    - **List:** dense rows with sortable column headers in a sticky header row. Columns: product (name; registrant · EPA no.), active ingredients with %, purpose badges, signal word / RUP, FRAC/IRAC codes when assigned, crops (short), and label + compare actions. Clicking a row opens the existing detail dialog. On phones, rows stack compactly.
    - **Card:** the friendlier view, slimmed down.
 
    Both must show the most relevant facts per product. Remember the choice (localStorage in try/catch; the URL comes with 4b).
 
-2. **Cut per-product boilerplate:**
+   Done: `ViewToggle` (Bits `ToggleGroup`, radios), `ProductList` (table with sticky headers; Product, Active ingredient, Purpose and Signal word sort both ways with `aria-sort`; the name button is the keyboard path to the dialog, a click elsewhere on the row is a mouse shortcut; phones get compact stacked rows and sort with the Sort menu). Rows list up to four ingredients (longer Bt stacks show three and "+N more"), crop families (exact sites in the tooltip and dialog), FRAC/IRAC when assigned, the label link and supplemental labeling, and Compare. Preference in `src/lib/preferences.ts` (`cpn-seed-view`). Sort keys gained reverse orders, registrant and signal severity (`SORTS` in `filters.ts`).
+
+2. [x] **Cut per-product boilerplate:**
    - the label-PDF explanation appears once, in the help text above the results
    - FRAC/IRAC lines only when assigned
    - the "N ingredients without a reviewed assignment" coverage line moves to the dialog
    - the quality / status-date footer line is condensed
-3. **Sticky filter sidebar** on desktop (sticky, internal scroll if taller than the viewport). On phones, the "Show filters" button is pinned to the bottom of the screen.
-4. **Hero:**
+
+   Done: one label explanation above the results (`#label-help`, covering the EPA-accepted PDF, the lookup, distributors and supplemental labeling); the per-product note stays in the dialog's label panel. Cards show FRAC/IRAC only when assigned, no coverage line, "quality · Status date" footer, tighter spacing (scoped styles in `ProductCard`).
+
+3. [x] **Sticky filter sidebar** on desktop (sticky, internal scroll if taller than the viewport). On phones, the "Show filters" button is pinned to the bottom of the screen. Done (scoped styles in `ProductsTab`): the sidebar keeps clear of the compare tray; the pinned button sits above it.
+4. [x] **Hero:**
    - the title "What's on your seed?" on one line, with the hero shortened
    - remove the 01/02/03 step strip (it duplicates the tabs)
    - in `?embed`, the hero becomes a slim banner
    - on phones, the tab bar becomes a single sideways-scrolling row
-5. **"EPA workbook loaded" notice → info, not a warning.** A short line by the result count ("880 products · EPA data as of …"), full details in the footer and the Sources tab. The "N records lack ingredients" warning becomes a flag on those records.
-6. **Bits UI** (`bits-ui`, as in the v1 project) where it fits: `Select` for sort and the single-choice filters, `ToggleGroup` for the view pill, `Accordion`/`Collapsible` for the filter groups, possibly a `Combobox`/`Popover` multi-select for crop sites, `Tooltip` for terse labels. Keep native elements where they work better (e.g. print). Keyboard and screen-reader behaviour must stay at least as good. The standalone single file must stay self-contained.
-7. **Before/after screenshots** at 1440 and 390 px for the user's review, plus updated e2e coverage for both views.
+
+   Done (scoped styles in `App.svelte`): one-line title, less hero padding, strip removed, `?embed` banner with the title and data line, sideways-scrolling tab row on phones (the active tab is scrolled into view).
+
+5. [x] **"EPA workbook loaded" notice → info, not a warning.** A short line by the result count ("880 products · EPA data as of …"), full details in the footer and the Sources tab. The "N records lack ingredients" warning becomes a flag on those records. Done: `#notice` only carries loading, failures and warnings (otherwise an empty, visually collapsed live region); "· EPA data as of …" sits by the count; the full "EPA workbook loaded" details are the first footer paragraph (`#catalog-details`), and the Sources tab keeps its dates panel; `RecordFlag` marks records without ingredients in both views.
+6. [x] **Bits UI** (`bits-ui`, as in the v1 project) where it fits: `Select` for sort and the single-choice filters, `ToggleGroup` for the view pill, `Accordion`/`Collapsible` for the filter groups, possibly a `Combobox`/`Popover` multi-select for crop sites, `Tooltip` for terse labels. Keep native elements where they work better (e.g. print). Keyboard and screen-reader behaviour must stay at least as good. The standalone single file must stay self-contained.
+
+   Done: `FilterSelect` (Bits `Select`) for sort and the eight single-choice filters ("All …" maps to an internal sentinel because Bits treats `''` as no selection); Bits `Accordion` for the three collapsible filter groups; `HeaderTip` (Bits `Tooltip`) on the List's Signal / RUP and FRAC / IRAC headers. Kept native: the crop-site checkbox list (14 options; a checkbox group is already the clearest multi-select), date inputs (native pickers), print, the compare checkboxes, the dialog (native `<dialog>`). e2e covers the accordion keys, select keyboard use (open, End, Enter, Escape, focus return) and tooltips on focus.
+
+7. [x] **Before/after screenshots** at 1440 and 390 px for the user's review, plus updated e2e coverage for both views.
+
+   Done: screenshots in the session scratchpad (`layout-review/before-*.png` from `main`, `after-*.png`), at 1440 and 390 px: products top, products scrolled (both views), a product dialog, `?embed`. Page height for 25 results (current catalog): 1440 px cards 14,597 → 11,372, list 4,253; 390 px cards 23,268 → 16,860, list 9,292. e2e covers both views (pill, rows, sorting, sticky headers, phone stacking, flags).
+
+### 4a follow-up (user review, 2026-11-25; branch `layout-density`)
+
+1. [x] Products column order: heading and intro, the label explanation, the search directly above the results, then one results toolbar row (count · "EPA data as of …" · Cards/List pill · Sort · Download menu), then the results.
+2. [x] The label explanation becomes a collapsed "About label links" disclosure under the intro (closed by default at all widths, open in print). A native `<details>`: "Print this view" opens it; a browser print of a closed disclosure leaves it closed (Chrome can't show closed `<details>` content from CSS).
+3. [x] Export and print become one compact "Download ▾" menu (Bits `DropdownMenu`) in the toolbar row. Items keep the old ids (`#export`, `#export-labels`, `#print-results`), toasts and the disabled-before-load state. The Ingredient guide, Treatment guide and Sources tabs keep their single small "Print this view" button (a one-item menu would only add a click).
+4. [x] Sticky stack instead of an inner scroll panel: the tab bar pins as a thinner header once scrolled past; the search and toolbar row pin under it on desktop (one compact row while pinned); the filter sidebar sits below both; on phones only the tab bar pins. Pinned: 109 px at 1440 (tab bar 51 + head 58), 51 px at 390. Focus, anchors and scrollIntoView land below via `scroll-padding-top`. `src/lib/sticky.ts`: pin state from zero-height sentinels (so shrinking can't unpin), heights published as `--tabs-h`/`--head-h` only while pinned (stable offsets), and `flowKeeper` adds the lost height back as margin so the page height never changes (no pin/unpin loops at the end of short pages). `?embed`: the same sticky stack inside the iframe's scroller; no separate inner results panel (optional, not needed).
+5. [x] Card view caps ingredients like the List (first three + "N more"; all in the dialog). Shared rule `shownIngredientCount()` (all up to four, otherwise three); on cards "+N more" is a button that opens the dialog.
+6. [x] List view: the Purpose column wraps at slashes or spaces, never mid-word (`overflow-wrap: normal` on the column, `<wbr>` after "/"; e2e checks every line break).
+7. [x] Review screenshots (`after2-*.png`) and e2e checks for the pinned header (desktop) and tab-bar-only pinning (390 px). Page height for 25 results: 1440 px cards 10,918 (was 11,372 after 4a; 14,597 before), list 4,123; 390 px cards 15,752, list 9,020. Pinned: 109 px at 1440, 51 px at 390.
 
 ### 4b. Shareable state and filtering (next batch)
 

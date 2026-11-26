@@ -16,6 +16,25 @@ async function open(page: Page, url = './') {
   await page.locator('.product').first().waitFor();
 }
 
+/** Pick an option in a Bits UI Select (a combobox button and a listbox). */
+async function choose(page: Page, id: string, option: string) {
+  await page.locator('#' + id).click();
+  await page.getByRole('option', { name: option, exact: true }).click();
+  await expect(page.getByRole('listbox')).toHaveCount(0);
+}
+
+/** Open the products toolbar's Download menu. */
+async function openDownloads(page: Page) {
+  await page.locator('#download-menu').click();
+  await expect(page.getByRole('menu')).toBeVisible();
+}
+
+/** Close an open menu with Escape. */
+async function closeMenu(page: Page) {
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('menu')).toHaveCount(0);
+}
+
 const isFocused = (page: Page, selector: string) =>
   page.locator(selector).evaluate((e) => e === document.activeElement);
 
@@ -70,26 +89,26 @@ test.describe('products', () => {
     await expect(page.locator('#applied .chip')).toHaveText(['Barley×']);
     await page.locator('#reset').click();
     await expect(page.locator('#count')).toHaveText('880 products');
-    await page.locator('#technology').selectOption('Plant-Incorp. Protectant');
+    await choose(page, 'technology', 'Plant-Incorp. Protectant');
     await expect(page.locator('#count')).toHaveText('85 products');
     await page.locator('#reset').click();
-    await page.locator('.record-filters summary').click();
-    await page.locator('#quality').selectOption('base-linked');
+    await page.getByRole('button', { name: 'Company & ingredient evidence' }).click();
+    await choose(page, 'quality', 'Related base formulation');
     await expect(page.locator('#count')).toHaveText('185 products');
     await page.locator('#reset').click();
     await page.getByText('Groups & EPA hazards', { exact: true }).click();
-    await page.locator('#signal').selectOption('NONE');
+    await choose(page, 'signal', 'None reported by EPA');
     await expect(page.locator('#count')).toHaveText('25 products');
-    await page.locator('#signal').selectOption('NOT_SUPPLIED');
+    await choose(page, 'signal', 'Not supplied / needs review');
     await expect(page.locator('#count')).toHaveText('187 products');
     await page.locator('#reset').click();
-    await page.locator('#rup').selectOption('yes');
+    await choose(page, 'rup', 'Yes');
     await expect(page.locator('#count')).toHaveText('19 products');
     // Oct 19 cards show a restricted-use badge only when the flag is Yes.
     await expect(page.locator('.product').first().locator('.safety-badge.warning')).toHaveText(
       'Restricted-use flag: Yes',
     );
-    await page.locator('#rup').selectOption('no');
+    await choose(page, 'rup', 'No');
     await expect(page.locator('.product .safety-badge', { hasText: 'Restricted-use' })).toHaveCount(
       0,
     );
@@ -102,7 +121,7 @@ test.describe('products', () => {
   }) => {
     await page.locator('#query').fill('fludioxonil');
     await page.getByText('Groups & EPA hazards', { exact: true }).click();
-    await page.locator('#rup').selectOption('no');
+    await choose(page, 'rup', 'No');
     await page.getByText('Registration status & dates', { exact: true }).click();
     await page.locator('#start').fill('2020-01-01');
     await expect(page.locator('#applied .chip')).toHaveText([
@@ -135,7 +154,9 @@ test.describe('products', () => {
     await expect(page.locator('#start')).toHaveAttribute('aria-invalid', 'true');
     await expect(page.locator('#results')).toContainText('Start date is after end date.');
     await expect(page.locator('#pager')).toBeHidden();
+    await openDownloads(page);
     await expect(page.locator('#export-labels')).toBeDisabled();
+    await closeMenu(page);
     await expect(page.locator('#a11y-alert')).toHaveText(
       'Start date must be on or before the end date.',
     );
@@ -148,10 +169,55 @@ test.describe('products', () => {
     await page.locator('#query').fill('no-product-matches-xyz');
     await expect(page.locator('#count')).toHaveText('0 products');
     await expect(page.locator('#results')).toContainText('No matching products.');
+    await openDownloads(page);
     await expect(page.locator('#export-labels')).toBeDisabled();
+    await closeMenu(page);
     await page.locator('[data-reset]').click();
     await expect(page.locator('#count')).toHaveText('880 products');
     await expect(page.locator('#query')).toBeFocused();
+  });
+
+  test('cards: FRAC/IRAC only when assigned, coverage in the dialog', async ({ page }) => {
+    await page.locator('#query').fill('100-1508');
+    const card = page.locator('.product');
+    await expect(card.locator('.groups')).toHaveText('FRAC 4, 7, 12 · IRAC 4A');
+    await expect(card).not.toContainText('reviewed FRAC/IRAC assignment');
+    await expect(card).not.toContainText('No reviewed assignment');
+    await expect(card.locator('.product-bottom')).toContainText('· Status ');
+    await page.locator('#query').fill('5905-491-38167');
+    await expect(page.locator('.product .groups')).toHaveCount(0);
+    await page.locator('.product-name').click();
+    await expect(page.locator('#dialog-body')).toContainText('Ingredients missing; groups unknown');
+    await page.keyboard.press('Escape');
+  });
+
+  test('cards show at most three of a long ingredient list, plus a count', async ({ page }) => {
+    // Many stacked Bt-trait products list more than four ingredients.
+    const card = page
+      .locator('.product')
+      .filter({ has: page.locator('.more-ingredients') })
+      .first();
+    await expect(card.locator('.ingredient-pill')).toHaveCount(3);
+    const more = card.locator('.more-ingredients');
+    const extra = Number((await more.textContent())!.match(/\d+/)![0]);
+    await more.click();
+    await expect(page.locator('#dialog-body table tbody tr')).toHaveCount(3 + extra);
+    await page.keyboard.press('Escape');
+    await expect(more).toBeFocused();
+    await page.locator('#query').fill('100-1508');
+    await expect(page.locator('.product .ingredient-pill')).toHaveCount(4);
+    await expect(page.locator('.product .more-ingredients')).toHaveCount(0);
+  });
+
+  test('records without ingredients carry their own flag, in both views', async ({ page }) => {
+    await page.locator('#query').fill('5905-491-38167');
+    await expect(page.locator('.product .record-flag')).toHaveText(
+      'Ingredients missing · deltamethrin exclusion not confirmed',
+    );
+    await page.getByRole('radio', { name: 'List' }).click();
+    await expect(page.locator('.product-row .record-flag')).toBeVisible();
+    await page.locator('#query').fill('100-1508');
+    await expect(page.locator('.record-flag')).toHaveCount(0);
   });
 
   test('label links: exact EPA PDF and distributor lookup', async ({ page, context }) => {
@@ -172,20 +238,31 @@ test.describe('products', () => {
     await opened.close();
     await page.locator('#query').fill('5905-491-38167');
     await expect(page.locator('.product .label-action')).toContainText('Find product label');
-    await expect(page.locator('.product .label-meta')).toContainText('5905-491-38167');
+    // The per-product note is in the dialog; the cards share one explanation.
+    await expect(page.locator('.product .label-meta')).toHaveCount(0);
+    await expect(page.locator('#label-help')).toBeHidden();
+    await page.getByText('About label links', { exact: true }).click();
+    await expect(page.locator('#label-help')).toContainText('acceptance letter');
+    await page.locator('.product-name').click();
+    await expect(page.locator('#dialog-body .label-panel')).toContainText('5905-491-38167');
+    await page.keyboard.press('Escape');
   });
 
   test('exports: label links (filtered and all) and results CSV', async ({ page }) => {
     await page.locator('#query').fill('5905-491-38167');
-    await expect(page.locator('#export')).toHaveText('Export results');
-    await expect(page.locator('#export-labels')).toHaveText('Export label links');
+    await openDownloads(page);
+    await expect(page.locator('#export')).toContainText('Results (CSV)');
+    await expect(page.locator('#export-labels')).toContainText('Label links (CSV)');
+    await expect(page.locator('#print-results')).toHaveText('Print this view');
     const filtered = await downloadText(page, () => page.locator('#export-labels').click());
     expect(filtered.split('\r\n')).toHaveLength(2);
     expect(filtered).toContain('Lookup required');
     await expect(page.locator('#toast')).toContainText('1 product exported in the label-link CSV');
     await page.locator('#reset').click();
+    await openDownloads(page);
     const all = await downloadText(page, () => page.locator('#export-labels').click());
     expect(all.split('\r\n')).toHaveLength(fixture.products.length + 1);
+    await openDownloads(page);
     const results = await downloadText(page, () => page.locator('#export').click());
     expect(results.charCodeAt(0)).toBe(0xfeff);
     expect(results).toContain('Workbook created');
@@ -235,6 +312,295 @@ test.describe('products', () => {
       'Exact registration match',
     );
     await page.keyboard.press('Escape');
+  });
+});
+
+test.describe('filters stay at hand', () => {
+  test('desktop: the sidebar stays in view while scrolling the results', async ({ page }) => {
+    await open(page);
+    await page.evaluate(() => window.scrollTo(0, 4000));
+    // It pins beside the search + toolbar row (which spans only the results column),
+    // level with the search box, just under the pinned tab bar.
+    const box = (await page.locator('#filters').boundingBox())!;
+    const head = (await page.locator('.results-head').boundingBox())!;
+    const tabs = (await page.locator('.tabs').boundingBox())!;
+    expect(Math.abs(box.y - (tabs.y + tabs.height + 6))).toBeLessThanOrEqual(2);
+    expect(box.y).toBeLessThan(head.y + head.height);
+    expect(box.x + box.width).toBeLessThanOrEqual(head.x);
+    expect(await page.locator('#filters').evaluate((e) => getComputedStyle(e).position)).toBe(
+      'sticky',
+    );
+  });
+
+  test('phones: Show filters is pinned to the bottom, above the compare tray', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await open(page);
+    await page.evaluate(() => window.scrollTo(0, 3000));
+    const button = page.locator('#mobile-filter');
+    const box = await button.boundingBox();
+    expect(box!.y + box!.height).toBeGreaterThan(844 - 80);
+    expect(box!.y + box!.height).toBeLessThanOrEqual(844);
+    await page.locator('[data-select]').first().check();
+    await expect(page.locator('#comparebar')).toBeVisible();
+    await expect
+      .poll(async () => {
+        const b = (await button.boundingBox())!;
+        const bar = (await page.locator('#comparebar').boundingBox())!;
+        return b.y + b.height <= bar.y;
+      })
+      .toBe(true);
+    await button.click();
+    await expect(page.locator('#filters')).toBeVisible();
+    await expect(page.locator('#filter-title')).toBeFocused();
+    await expect(button).toHaveText('Hide filters');
+  });
+});
+
+test.describe('filter controls: keyboard and screen readers', () => {
+  test.beforeEach(async ({ page }) => open(page));
+
+  test('filter groups are accordion buttons with aria-expanded', async ({ page }) => {
+    const trigger = page.getByRole('button', { name: 'Groups & EPA hazards' });
+    await expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    await trigger.focus();
+    await page.keyboard.press('Enter');
+    await expect(trigger).toHaveAttribute('aria-expanded', 'true');
+    await expect(page.getByRole('combobox', { name: 'EPA signal word' })).toBeVisible();
+    await page.keyboard.press('Space');
+    await expect(trigger).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  test('selects are labelled comboboxes operable from the keyboard', async ({ page }) => {
+    await page.getByRole('button', { name: 'Groups & EPA hazards' }).click();
+    const signal = page.getByRole('combobox', { name: 'EPA signal word' });
+    await expect(signal).toHaveText('All signal words');
+    await signal.focus();
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('listbox')).toBeVisible();
+    await page.keyboard.press('End');
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('listbox')).toHaveCount(0);
+    await expect(signal).toHaveText('Not supplied / needs review');
+    await expect(signal).toBeFocused();
+    await expect(page.locator('#count')).toHaveText('187 products');
+    // Escape closes without changing the choice.
+    await page.keyboard.press('ArrowDown');
+    await expect(page.getByRole('listbox')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('listbox')).toHaveCount(0);
+    await expect(signal).toBeFocused();
+    await expect(page.locator('#count')).toHaveText('187 products');
+    // Choosing "All signal words" clears the filter again.
+    await choose(page, 'signal', 'All signal words');
+    await expect(page.locator('#count')).toHaveText('880 products');
+  });
+
+  test('the sort menu offers every order, including the list columns', async ({ page }) => {
+    const sort = page.getByRole('combobox', { name: 'Sort' });
+    await sort.click();
+    await expect(page.getByRole('option')).toHaveCount(12);
+    await page.getByRole('option', { name: 'Signal word, most severe first' }).click();
+    await page.getByRole('radio', { name: 'List' }).click();
+    await expect(page.locator('thead th.col-signal')).toHaveAttribute('aria-sort', 'descending');
+  });
+
+  test('the Download menu works from the keyboard', async ({ page }) => {
+    const trigger = page.getByRole('button', { name: 'Download' });
+    await expect(trigger).toHaveAttribute('aria-haspopup', 'menu');
+    await trigger.focus();
+    await page.keyboard.press('Enter');
+    const menu = page.getByRole('menu');
+    await expect(menu).toBeVisible();
+    await expect(menu.getByRole('menuitem')).toHaveCount(3);
+    await page.keyboard.press('ArrowDown');
+    await expect(page.locator('#export-labels')).toHaveAttribute('data-highlighted', '');
+    const download = page.waitForEvent('download');
+    await page.keyboard.press('Enter');
+    expect((await download).suggestedFilename()).toMatch(/^CPN-label-links-/);
+    await expect(menu).toHaveCount(0);
+    await expect(trigger).toBeFocused();
+  });
+
+  test('terse list headers explain themselves on focus', async ({ page }) => {
+    await page.getByRole('radio', { name: 'List' }).click();
+    await page.locator('thead th.col-groups [tabindex="0"]').focus();
+    await expect(page.locator('.header-tip')).toContainText('resistance-group codes');
+    await page.keyboard.press('Escape');
+    await expect(page.locator('.header-tip')).toHaveCount(0);
+  });
+});
+
+test.describe('sticky stack (4a follow-up 4)', () => {
+  const rect = (page: Page, sel: string) =>
+    page.locator(sel).evaluate((e) => {
+      const r = e.getBoundingClientRect();
+      return { top: r.top, bottom: r.bottom, height: r.height, left: r.left, right: r.right };
+    });
+
+  test('desktop: the tab bar and the search + toolbar row stay pinned', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await open(page);
+    for (const view of ['Cards', 'List']) {
+      await page.getByRole('radio', { name: view }).click();
+      // Mid-page (the List is short; at its end the sidebar's container pushes it up).
+      await page.evaluate(() => window.scrollTo(0, 1200));
+      await expect(page.locator('.tabs')).toHaveClass(/stuck/);
+      await expect(page.locator('.results-head')).toHaveClass(/pinned/);
+      const tabs = await rect(page, '.tabs');
+      const head = await rect(page, '.results-head');
+      const filters = await rect(page, '#filters');
+      expect(tabs.top).toBe(0);
+      expect(head.top).toBeCloseTo(tabs.bottom, 0);
+      expect(head.bottom).toBeLessThanOrEqual(120);
+      // The sidebar sits beside the pinned row, level with the search box.
+      expect(Math.abs(filters.top - (tabs.bottom + 6))).toBeLessThanOrEqual(2);
+      expect(filters.right).toBeLessThanOrEqual(head.left);
+      await expect(page.locator('#query')).toBeInViewport();
+      await expect(page.locator('#download-menu')).toBeInViewport();
+      await expect(page.getByRole('tab', { name: 'Treatment guide' })).toBeInViewport();
+      if (view === 'List') {
+        // The list's column headers stick just below the pinned stack.
+        const th = await rect(page, 'thead th.col-product');
+        expect(th.top).toBeCloseTo(head.bottom, 0);
+      }
+      await page.evaluate(() => window.scrollTo(0, 0));
+    }
+  });
+
+  test('phones: only the tab bar is pinned', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await open(page);
+    await page.evaluate(() => window.scrollTo(0, 3000));
+    await expect(page.locator('.tabs')).toHaveClass(/stuck/);
+    expect((await rect(page, '.tabs')).top).toBe(0);
+    await expect(page.locator('.results-head')).not.toHaveClass(/pinned/);
+    await expect(page.locator('#query')).not.toBeInViewport();
+    await expect(page.locator('#mobile-filter')).toBeInViewport();
+  });
+
+  test('focus returns below the pinned header', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await open(page);
+    const button = page.locator('.product-name').nth(12);
+    await button.click();
+    await expect(page.locator('#dialog[open]')).toBeVisible();
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.keyboard.press('Escape');
+    await expect(button).toBeFocused();
+    const pinned = (await rect(page, '.results-head')).bottom;
+    expect((await button.boundingBox())!.y).toBeGreaterThanOrEqual(pinned);
+  });
+});
+
+test.describe('list view', () => {
+  test.beforeEach(async ({ page }) => open(page));
+
+  test('the Cards / List pill switches views and is remembered', async ({ page }) => {
+    const pill = page.getByRole('group', { name: 'Results view' });
+    await expect(pill.getByRole('radio', { name: 'Cards' })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    );
+    await pill.getByRole('radio', { name: 'List' }).click();
+    await expect(page.locator('.product-row')).toHaveCount(25);
+    await expect(page.locator('.product')).toHaveCount(0);
+    // Keyboard: arrow keys move between the two radios.
+    await pill.getByRole('radio', { name: 'List' }).focus();
+    await page.keyboard.press('ArrowLeft');
+    await expect(pill.getByRole('radio', { name: 'Cards' })).toBeFocused();
+    await page.reload();
+    await page.locator('.product-row').first().waitFor();
+    await expect(pill.getByRole('radio', { name: 'List' })).toHaveAttribute('aria-checked', 'true');
+  });
+
+  test('rows show the key facts, open the dialog, and compare', async ({ page }) => {
+    await page.getByRole('radio', { name: 'List' }).click();
+    await page.locator('#query').fill('100-1508');
+    const row = page.locator('.product-row');
+    await expect(row).toHaveCount(1);
+    for (const text of [
+      'Cruisermaxx Vibrance',
+      'EPA 100-1508',
+      'Thiamethoxam',
+      '20.8%',
+      'Fungicide',
+      'CAUTION',
+      'IRAC 4A',
+      'Corn',
+    ])
+      await expect(row).toContainText(text);
+    await expect(row.locator('.label-action')).toHaveAttribute('target', '_blank');
+    await row.locator('.col-crops').click();
+    await expect(page.locator('#dialog-title')).toHaveText('Cruisermaxx Vibrance');
+    await page.keyboard.press('Escape');
+    // Keyboard path: the name button.
+    await row.locator('[data-detail="100-1508"]').focus();
+    await page.keyboard.press('Enter');
+    await expect(page.locator('#dialog-title')).toBeFocused();
+    await page.keyboard.press('Escape');
+    await expect(row.locator('[data-detail="100-1508"]')).toBeFocused();
+    await row.locator('[data-select="100-1508"]').check();
+    await expect(page.locator('#dialog')).toBeHidden();
+    await expect(page.locator('#selected-count')).toHaveText('1 of 4 products selected');
+  });
+
+  test('column headers sort, with aria-sort, and stick to the top', async ({ page }) => {
+    await page.getByRole('radio', { name: 'List' }).click();
+    const header = page.locator('thead th.col-product');
+    await expect(header).toHaveAttribute('aria-sort', 'ascending');
+    await header.getByRole('button').click();
+    await expect(header).toHaveAttribute('aria-sort', 'descending');
+    const names = await page.locator('.row-name').allTextContents();
+    expect(names).toEqual([...names].sort((a, b) => b.localeCompare(a)));
+    await page.locator('thead th.col-signal button').click();
+    await expect(page.locator('thead th.col-signal')).toHaveAttribute('aria-sort', 'descending');
+    await expect(page.locator('.row-signal').first()).toHaveText('DANGER');
+    expect(
+      await page
+        .locator('thead th')
+        .first()
+        .evaluate((e) => getComputedStyle(e).position),
+    ).toBe('sticky');
+  });
+
+  test('purposes wrap at spaces or slashes, never mid-word', async ({ page }) => {
+    await page.getByRole('radio', { name: 'List' }).click();
+    await page.locator('#query').fill('Smartstax Pro Enlist');
+    const purpose = page.locator('.product-row .row-purpose').first();
+    await expect(purpose).toHaveText('Nonviable Microbial/Transgenic Plant');
+    expect(await purpose.locator('wbr').count()).toBe(1);
+    // Every line break falls at a space or right after "/".
+    const breaksMidWord = await purpose.evaluate((el) => {
+      const text = el.textContent!;
+      const range = document.createRange();
+      let lastTop = -1;
+      let offset = 0;
+      const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+      for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+        for (let i = 0; i < node.textContent!.length; i++, offset++) {
+          range.setStart(node, i);
+          range.setEnd(node, i + 1);
+          const top = Math.round(range.getBoundingClientRect().top);
+          if (lastTop >= 0 && top > lastTop) {
+            const before = text[offset - 1];
+            if (before !== ' ' && before !== '/' && text[offset] !== ' ') return true;
+          }
+          lastTop = top;
+        }
+      }
+      return false;
+    });
+    expect(breaksMidWord).toBe(false);
+  });
+
+  test('phones: rows stack without sideways scrolling', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.getByRole('radio', { name: 'List' }).click();
+    await expect(page.locator('.product-row').first()).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+      390,
+    );
+    await expect(page.locator('.product-list thead')).toBeHidden();
   });
 });
 
@@ -403,44 +769,45 @@ test.describe('guides and sources', () => {
   for (const view of ['products', 'ingredients', 'guide', 'data'])
     test(`Print this view prints the ${view} tab with the disclaimer`, async ({ page }) => {
       await page.locator(`#tab-${view}`).click();
-      await page.emulateMedia({ media: 'print' });
-      const printed = await page.evaluate((id) => {
-        let state: Record<string, unknown> = {};
-        const shown = (sel: string) => {
-          const el = document.querySelector(sel);
-          return !!el && getComputedStyle(el).display !== 'none';
-        };
+      // What is open at the moment of printing (then restored).
+      await page.evaluate(() => {
         window.print = () => {
-          state = {
-            panel: shown(`#${id}`),
-            content: shown(
-              {
-                products: '.workspace',
-                ingredients: '.ingredient-grid',
-                guide: '.guide-grid',
-                data: '.data-grid',
-              }[id]!,
-            ),
-            filters: shown('#filters'),
-            footer: shown('footer.disclaimer'),
+          (window as unknown as { printState: unknown }).printState = {
             disclaimerOpen: (document.getElementById('tool-disclaimer') as HTMLDetailsElement).open,
-            button: shown(`#${id} .print-view`),
+            labelAboutOpen: (document.querySelector('.label-about') as HTMLDetailsElement).open,
           };
         };
-        (document.querySelector(`#${id} .print-view`) as HTMLButtonElement).click();
-        return state;
-      }, view);
-      expect(printed).toEqual({
-        panel: true,
-        content: true,
-        filters: false,
-        footer: true,
-        disclaimerOpen: true,
-        button: false,
       });
+      // Products: the Download menu; the other tabs keep a small Print this view button.
+      if (view === 'products') {
+        await openDownloads(page);
+        await page.locator('#print-results').click();
+      } else await page.locator(`#${view} .print-view`).click();
+      expect(
+        await page.evaluate(() => (window as unknown as { printState: unknown }).printState),
+      ).toEqual({ disclaimerOpen: true, labelAboutOpen: view === 'products' });
       expect(
         await page.locator('#tool-disclaimer').evaluate((e) => (e as HTMLDetailsElement).open),
       ).toBe(false);
+      // The print layout shows this view's content and hides the controls.
+      await page.emulateMedia({ media: 'print' });
+      const shown = (sel: string) =>
+        page.evaluate((s) => {
+          const el = document.querySelector(s);
+          return !!el && getComputedStyle(el).display !== 'none';
+        }, sel);
+      const content = {
+        products: '.workspace',
+        ingredients: '.ingredient-grid',
+        guide: '.guide-grid',
+        data: '.data-grid',
+      }[view]!;
+      expect(await shown(`#${view}`)).toBe(true);
+      expect(await shown(content)).toBe(true);
+      expect(await shown('#filters')).toBe(false);
+      expect(await shown('footer.disclaimer')).toBe(true);
+      expect(await shown(view === 'products' ? '.download' : `#${view} .print-view`)).toBe(false);
+      await page.emulateMedia({ media: 'screen' });
     });
 
   test('the dialog links to the treatment guide', async ({ page }) => {
@@ -456,9 +823,13 @@ test.describe('guides and sources', () => {
     page,
   }) => {
     await expect(page.locator('#hero-mode')).toHaveText('EPA data as of Sep 21, 2026');
-    await expect(page.locator('#notice')).toContainText('EPA workbook loaded');
-    await expect(page.locator('#notice')).toContainText('Catalog last changed');
-    await expect(page.locator('#notice')).not.toContainText('retrieval');
+    // 4a.5: no notice when all is well; the date sits by the count, details in the footer.
+    await expect(page.locator('#notice')).toHaveText('');
+    await expect(page.locator('#notice')).toHaveClass(/quiet-notice/);
+    await expect(page.locator('.result-meta')).toHaveText('· EPA data as of Sep 21, 2026');
+    await expect(page.locator('#catalog-details')).toContainText('EPA workbook loaded');
+    await expect(page.locator('#catalog-details')).toContainText('Catalog last changed');
+    await expect(page.locator('#catalog-details')).not.toContainText('retrieval');
     await page.locator('#tab-data').click();
     const panels = page.locator('#data-grid > article');
     await expect(panels.nth(1).locator('h3')).toHaveText('Data currency & update history');
@@ -504,8 +875,7 @@ test.describe('mobile', () => {
     await page.locator('#mobile-filter').click();
     await page.locator('#apply-filters').click();
     await expect(page.locator('#count')).toBeFocused();
-    await expect(page.locator('#export')).toBeVisible();
-    await expect(page.locator('#export-labels')).toBeVisible();
+    await expect(page.locator('#download-menu')).toBeVisible();
     await expect(page.locator('.crop-text').first()).toBeVisible();
     await expect(page.locator('.product .label-action').first()).toBeVisible();
     await page.setViewportSize({ width: 320, height: 844 });
@@ -552,12 +922,54 @@ test.describe('before the catalog loads', () => {
     await page.goto('./');
     await expect(page.locator('#notice')).toHaveText('Loading the database…');
     await expect(page.locator('#pager')).toBeHidden();
+    await openDownloads(page);
     await expect(page.locator('#export')).toBeDisabled();
     await expect(page.locator('#export-labels')).toBeDisabled();
+    await closeMenu(page);
     release();
     await expect(page.locator('#count')).toHaveText('880 products');
     await expect(page.locator('#pager')).toBeVisible();
+    await openDownloads(page);
     await expect(page.locator('#export')).toBeEnabled();
+    await closeMenu(page);
+  });
+});
+
+test.describe('hero and tabs (4a.4)', () => {
+  test('the title is on one line and the step strip is gone', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await open(page);
+    await expect(page.locator('.start-strip')).toHaveCount(0);
+    const lines = await page.locator('.hero h1').evaluate((h) => {
+      const r = document.createRange();
+      r.selectNodeContents(h);
+      return new Set([...r.getClientRects()].map((x) => Math.round(x.top))).size;
+    });
+    expect(lines).toBe(1);
+    expect((await page.locator('.hero').boundingBox())!.height).toBeLessThan(360);
+  });
+
+  test('phones: the tabs are one row that scrolls sideways', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await open(page);
+    const tops = await page
+      .locator('[role=tab]')
+      .evaluateAll(
+        (tabs) => new Set(tabs.map((t) => Math.round(t.getBoundingClientRect().top))).size,
+      );
+    expect(tops).toBe(1);
+    expect(await page.locator('.tabs').evaluate((e) => e.scrollWidth > e.clientWidth)).toBe(true);
+    await page.locator('#tab-data').click();
+    const box = (await page.locator('#tab-data').boundingBox())!;
+    expect(box.x + box.width).toBeLessThanOrEqual(390);
+  });
+
+  test('?embed shows a slim banner instead of the full hero', async ({ page }) => {
+    await open(page, './?embed');
+    await expect(page.locator('.hero h1')).toBeVisible();
+    await expect(page.locator('.hero p')).toBeHidden();
+    await expect(page.locator('.hero-actions')).toBeHidden();
+    expect((await page.locator('.hero').boundingBox())!.height).toBeLessThan(90);
   });
 });
 
@@ -583,10 +995,9 @@ test.describe('hero', () => {
 });
 
 test.describe('embedding', () => {
-  test('?embed hides the page header and hero', async ({ page }) => {
+  test('?embed hides the page header', async ({ page }) => {
     await open(page, './?embed');
     await expect(page.locator('header')).toBeHidden();
-    await expect(page.locator('.hero')).toBeHidden();
     await expect(page.locator('#count')).toHaveText('880 products');
   });
 
@@ -641,9 +1052,43 @@ test('newer supplemental-only labeling is linked next to the full label', async 
     'href',
     product.safety.label_url!,
   );
-  await expect(page.locator('.product .label-meta')).toContainText('acceptance letter');
   await page.locator('.product-name').click();
+  await expect(page.locator('#dialog-body .label-panel')).toContainText('acceptance letter');
   const item = page.locator('#dialog-body .label-supplemental-list a');
   await expect(item).toHaveAttribute('href', url);
   await expect(item).toContainText('Supplemental label: new use');
+});
+
+test('switching tabs starts at the top of the new tab, not mid-page', async ({ page }) => {
+  await open(page);
+  // The new tab's content must start just under the tab bar, inside the viewport.
+  const gap = (id: string) =>
+    page.evaluate((panel) => {
+      const tabs = document.querySelector('.tabs')!.getBoundingClientRect();
+      const top = document.getElementById(panel)!.getBoundingClientRect().top;
+      return { gap: top - tabs.bottom, tabsBottom: tabs.bottom };
+    }, id);
+  // Click like a person: Playwright's locator.click() first scrolls the target into view,
+  // which (with the pinned header's scroll-padding) moves the page and hides the bug.
+  const clickTab = async (id: string) => {
+    const box = (await page.locator('#tab-' + id).boundingBox())!;
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  };
+  // From the hero, a tab switch leaves the scroll position alone.
+  await page.evaluate(() => scrollTo(0, 0));
+  await clickTab('guide');
+  expect(await page.evaluate(() => scrollY)).toBe(0);
+  // Deep in the products list → Comparison matrix → scroll a bit → back to products.
+  await clickTab('products');
+  await page.evaluate(() => scrollTo(0, 4000));
+  await clickTab('matrix');
+  let g = await gap('matrix');
+  expect(g.gap).toBeGreaterThanOrEqual(0);
+  expect(g.gap).toBeLessThan(40);
+  await page.evaluate(() => scrollBy(0, 200));
+  await clickTab('products');
+  g = await gap('products');
+  expect(g.gap).toBeGreaterThanOrEqual(0);
+  expect(g.gap).toBeLessThan(40);
+  expect(g.tabsBottom).toBeLessThan(80); // the tab bar is pinned at the top of the window
 });

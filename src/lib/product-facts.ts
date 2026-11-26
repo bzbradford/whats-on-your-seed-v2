@@ -116,3 +116,11 @@ export function detailWarning(p: Product): string {
     warning = 'EPA active status and exact approved uses have not been verified. ' + warning;
   return warning;
 }
+
+/**
+ * How many ingredients a card or list row shows: all of them up to four; longer lists
+ * (mostly stacked Bt traits) show three and count the rest, which the dialog lists.
+ */
+export function shownIngredientCount(total: number): number {
+  return total > 4 ? 3 : total;
+}

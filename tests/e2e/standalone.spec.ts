@@ -106,8 +106,9 @@ test('online: loads the published catalog, survives an outage, recovers', async 
   const id = catalog.products[0].id;
   await page.locator('#query').fill(id);
   await expect(page.locator('.product').first()).toContainText('Browser online refresh fixture');
-  await expect(page.locator('#notice')).toContainText('EPA workbook loaded');
-  await expect(page.locator('#notice')).not.toContainText('embedded snapshot');
+  await expect(page.locator('#notice')).toHaveText('');
+  await expect(page.locator('#catalog-details')).toContainText('EPA workbook loaded');
+  await expect(page.locator('#catalog-details')).not.toContainText('embedded snapshot');
   await page.locator(`[data-select="${id}"]`).check();
   for (const file of ['catalog.json', 'sync-status.json', 'update-history.json'])
     expect(remote.requests).toContain(PUBLISHED + file);
@@ -133,7 +134,7 @@ test('online: loads the published catalog, survives an outage, recovers', async 
   remote.available = true;
   remote.status = { ...status, message: 'Browser recovered status fixture.' };
   await page.clock.runFor(FIVE_MINUTES);
-  await expect(page.locator('#notice')).toContainText('EPA workbook loaded');
+  await expect(page.locator('#notice')).toHaveText('');
   await page.locator('#tab-data').click();
   await expect(page.locator('#data')).toContainText('Browser recovered status fixture.');
   await expect(page.locator('#data')).toContainText('Online catalog; checks every five minutes');

@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { count, fmt, localDate, norm, safeUrl, shortSite } from '../../src/lib/format';
+import {
+  count,
+  cropFamilies,
+  fmt,
+  localDate,
+  norm,
+  safeUrl,
+  shortSite,
+} from '../../src/lib/format';
 
 describe('format helpers', () => {
   it('norm trims, collapses whitespace and lowercases', () => {
@@ -24,6 +32,20 @@ describe('format helpers', () => {
     expect(count(0, 'product')).toBe('0 products');
     expect(count(2, 'match', 'matches')).toBe('2 matches');
     expect(count(1880, 'record')).toBe('1,880 records');
+  });
+
+  it('cropFamilies groups site variants for compact displays', () => {
+    expect(
+      cropFamilies([
+        'Barley (seed treatment)',
+        'Corn (field) (seed treatment)',
+        'Corn (seed treatment)',
+        'Cotton (acid delinted) (seed treatment)',
+        'Cotton Seed (Fuzzy) (seed treatment)',
+        'Soybeans, Edible (Seed and Pod Vegetable) (seed treatment)',
+        'Small grains (seed treatment)',
+      ]),
+    ).toEqual(['Barley', 'Corn', 'Cotton', 'Soybeans', 'Small grains']);
   });
 
   it('shortSite drops the seed-treatment suffix', () => {
