@@ -1,8 +1,22 @@
 <script lang="ts">
-  // Static copy from legacy/static/index.html (footer.disclaimer).
+  // Master-era footer text and draft disclaimer, plus (4a.5) the catalog details that the
+  // Oct 19 "EPA workbook loaded" notice used to show.
+  import { getApp } from '../lib/context';
+  import { loadedNotice } from '../lib/currency';
+
+  const app = getApp();
+  const details = $derived(
+    app.loadState === 'ready'
+      ? loadedNotice(app.catalog, app.status, app.flags.usingEmbeddedSnapshot)
+      : null,
+  );
 </script>
 
 <footer class="disclaimer">
+  {#if details}<p class="catalog-details" id="catalog-details">
+      <strong>{details.title}.</strong>
+      {details.message}
+    </p>{/if}
   <p>
     <strong>Educational reference only.</strong> Data may be incomplete, inaccurate, or out of date. Verify
     the exact product, current label, federal and state registration, and applicable restrictions before

@@ -133,7 +133,7 @@ Goal: make the products view scannable and the page less tall, keep the Oct 19 c
 
    Done (scoped styles in `App.svelte`): one-line title, less hero padding, strip removed, `?embed` banner with the title and data line, sideways-scrolling tab row on phones (the active tab is scrolled into view).
 
-5. **"EPA workbook loaded" notice → info, not a warning.** A short line by the result count ("880 products · EPA data as of …"), full details in the footer and the Sources tab. The "N records lack ingredients" warning becomes a flag on those records.
+5. [x] **"EPA workbook loaded" notice → info, not a warning.** A short line by the result count ("880 products · EPA data as of …"), full details in the footer and the Sources tab. The "N records lack ingredients" warning becomes a flag on those records. Done: `#notice` only carries loading, failures and warnings (otherwise an empty, visually collapsed live region); "· EPA data as of …" sits by the count; the full "EPA workbook loaded" details are the first footer paragraph (`#catalog-details`), and the Sources tab keeps its dates panel; `RecordFlag` marks records without ingredients in both views.
 6. **Bits UI** (`bits-ui`, as in the v1 project) where it fits: `Select` for sort and the single-choice filters, `ToggleGroup` for the view pill, `Accordion`/`Collapsible` for the filter groups, possibly a `Combobox`/`Popover` multi-select for crop sites, `Tooltip` for terse labels. Keep native elements where they work better (e.g. print). Keyboard and screen-reader behaviour must stay at least as good. The standalone single file must stay self-contained.
 7. **Before/after screenshots** at 1440 and 390 px for the user's review, plus updated e2e coverage for both views.
 

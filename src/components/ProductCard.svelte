@@ -7,6 +7,7 @@
   import ExtLink from './ExtLink.svelte';
   import LabelAction from './LabelAction.svelte';
   import PurposeBadge from './PurposeBadge.svelte';
+  import RecordFlag from './RecordFlag.svelte';
   import SafetyBadges from './SafetyBadges.svelte';
 
   let { product: p }: { product: Product } = $props();
@@ -46,6 +47,7 @@
       <div class="product-sub">
         {p.registrant} <span aria-hidden="true">·</span> EPA {p.registration_number}
       </div>
+      <RecordFlag product={p} />
     </div>
     <div class="chips">
       {#each p.purposes as purpose, i (i)}{i ? ' ' : ''}<PurposeBadge {purpose} />{/each}

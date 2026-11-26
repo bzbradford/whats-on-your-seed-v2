@@ -168,6 +168,17 @@ test.describe('products', () => {
     await page.keyboard.press('Escape');
   });
 
+  test('records without ingredients carry their own flag, in both views', async ({ page }) => {
+    await page.locator('#query').fill('5905-491-38167');
+    await expect(page.locator('.product .record-flag')).toHaveText(
+      'Ingredients missing · deltamethrin exclusion not confirmed',
+    );
+    await page.getByRole('radio', { name: 'List' }).click();
+    await expect(page.locator('.product-row .record-flag')).toBeVisible();
+    await page.locator('#query').fill('100-1508');
+    await expect(page.locator('.record-flag')).toHaveCount(0);
+  });
+
   test('label links: exact EPA PDF and distributor lookup', async ({ page, context }) => {
     await page.locator('#query').fill(labelProduct.id);
     const link = page.locator('.product .label-action');
@@ -593,9 +604,13 @@ test.describe('guides and sources', () => {
     page,
   }) => {
     await expect(page.locator('#hero-mode')).toHaveText('EPA data as of Sep 21, 2026');
-    await expect(page.locator('#notice')).toContainText('EPA workbook loaded');
-    await expect(page.locator('#notice')).toContainText('Catalog last changed');
-    await expect(page.locator('#notice')).not.toContainText('retrieval');
+    // 4a.5: no notice when all is well; the date sits by the count, details in the footer.
+    await expect(page.locator('#notice')).toHaveText('');
+    await expect(page.locator('#notice')).toHaveClass(/quiet-notice/);
+    await expect(page.locator('.result-meta')).toHaveText('· EPA data as of Sep 21, 2026');
+    await expect(page.locator('#catalog-details')).toContainText('EPA workbook loaded');
+    await expect(page.locator('#catalog-details')).toContainText('Catalog last changed');
+    await expect(page.locator('#catalog-details')).not.toContainText('retrieval');
     await page.locator('#tab-data').click();
     const panels = page.locator('#data-grid > article');
     await expect(panels.nth(1).locator('h3')).toHaveText('Data currency & update history');

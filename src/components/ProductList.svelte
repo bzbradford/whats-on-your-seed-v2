@@ -7,6 +7,7 @@
   import type { Product } from '../lib/types';
   import ExtLink from './ExtLink.svelte';
   import LabelAction from './LabelAction.svelte';
+  import RecordFlag from './RecordFlag.svelte';
 
   // List view: one dense row per product. The product name button is the keyboard path
   // to the detail dialog; clicking elsewhere on a row is a mouse shortcut to it.
@@ -105,6 +106,7 @@
             {p.name}
           </button>
           <span class="row-sub">{p.registrant} · EPA {p.registration_number}</span>
+          <RecordFlag product={p} />
         </th>
         <td class="col-ingredients">
           {#each p.ingredients.slice(0, shown(p)) as a, i (i)}

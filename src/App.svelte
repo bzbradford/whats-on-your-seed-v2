@@ -3,7 +3,7 @@
   import logo from './assets/cpn-logo-2022.png';
   import { AppState, type View } from './lib/app-state.svelte';
   import { setApp } from './lib/context';
-  import { heroModeText, loadedNotice, updateWarning } from './lib/currency';
+  import { heroModeText, updateWarning } from './lib/currency';
   import IconSprite from './components/IconSprite.svelte';
   import Icon, { type IconName } from './components/Icon.svelte';
   import ProductsTab from './components/ProductsTab.svelte';
@@ -34,10 +34,11 @@
     { id: 'data', label: 'Sources & updates', icon: 'source' },
   ];
 
-  const notice = $derived(
-    updateWarning(app.flags, app.status) ??
-      loadedNotice(app.catalog, app.status, app.flags.usingEmbeddedSnapshot),
-  );
+  // 4a.5: the notice is for loading, failures and warnings only. When the catalog loads
+  // normally it stays empty (an always-present live region, visually collapsed); the data
+  // date sits by the result count and the details are in the footer and Sources tab.
+  const warning = $derived(updateWarning(app.flags, app.status));
+  const quietNotice = $derived(app.loadState === 'ready' && !warning);
 
   function onTabKeydown(event: KeyboardEvent) {
     if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
@@ -130,7 +131,7 @@
       </button>
     {/each}
   </div>
-  <div class="notice" id="notice" role="status" aria-atomic="true">
+  <div class="notice" class:quiet-notice={quietNotice} id="notice" role="status" aria-atomic="true">
     {#if app.loadState === 'loading'}
       Loading the database…
     {:else if app.loadState === 'unavailable'}
@@ -138,8 +139,8 @@
         The verified catalog has not been connected. No example records are being shown as live
         data. The tool will retry automatically.
       </span>
-    {:else}
-      <strong>{notice.title}</strong><span>{notice.message}</span>
+    {:else if warning}
+      <strong>{warning.title}</strong><span>{warning.message}</span>
     {/if}
   </div>
   <ProductsTab />
@@ -216,6 +217,17 @@
       grid-column: auto;
       justify-content: center;
     }
+  }
+  /* Empty notice: keep the live region in the page but take no space. */
+  .notice.quiet-notice {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    border: 0;
   }
   /* ?embed: the hero shrinks to a slim banner (title and data line only). */
   :global(html[data-view='embed']) .hero .shell {

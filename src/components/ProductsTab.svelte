@@ -18,7 +18,8 @@
     siteSummary,
     type AppliedChip,
   } from '../lib/filters';
-  import { localDate } from '../lib/format';
+  import { epaDataAsOf } from '../lib/currency';
+  import { fmt, localDate } from '../lib/format';
   import Icon from './Icon.svelte';
   import PrintViewButton from './PrintViewButton.svelte';
   import ProductCard from './ProductCard.svelte';
@@ -350,6 +351,9 @@
         <h3 id="count" tabindex="-1">
           {app.loadState === 'unavailable' ? 'No live catalog' : ready ? app.count : ''}
         </h3>
+        {#if ready && !app.result.invalidDates}<span class="result-meta">
+            · EPA data as of {fmt(epaDataAsOf(app.catalog))}
+          </span>{/if}
         <div class="result-controls">
           <ViewToggle />
           <label class="small muted">
@@ -514,5 +518,10 @@
       color: #fff;
       box-shadow: 0 4px 16px #122b3340;
     }
+  }
+  .result-meta {
+    margin-right: auto;
+    color: var(--muted);
+    font-size: 0.875rem;
   }
 </style>
