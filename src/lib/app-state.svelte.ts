@@ -263,6 +263,8 @@ export class AppState {
     if (this.dialog) this.closeDialog(false);
     this.view = id as View;
     await tick();
+    // Phones: the tab row scrolls sideways; keep the active tab in view.
+    document.getElementById('tab-' + id)?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
     if (moveFocus) focusById('tab-' + id);
   }
 

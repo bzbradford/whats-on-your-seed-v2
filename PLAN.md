@@ -125,11 +125,14 @@ Goal: make the products view scannable and the page less tall, keep the Oct 19 c
    Done: one label explanation above the results (`#label-help`, covering the EPA-accepted PDF, the lookup, distributors and supplemental labeling); the per-product note stays in the dialog's label panel. Cards show FRAC/IRAC only when assigned, no coverage line, "quality · Status date" footer, tighter spacing (scoped styles in `ProductCard`).
 
 3. [x] **Sticky filter sidebar** on desktop (sticky, internal scroll if taller than the viewport). On phones, the "Show filters" button is pinned to the bottom of the screen. Done (scoped styles in `ProductsTab`): the sidebar keeps clear of the compare tray; the pinned button sits above it.
-4. **Hero:**
+4. [x] **Hero:**
    - the title "What's on your seed?" on one line, with the hero shortened
    - remove the 01/02/03 step strip (it duplicates the tabs)
    - in `?embed`, the hero becomes a slim banner
    - on phones, the tab bar becomes a single sideways-scrolling row
+
+   Done (scoped styles in `App.svelte`): one-line title, less hero padding, strip removed, `?embed` banner with the title and data line, sideways-scrolling tab row on phones (the active tab is scrolled into view).
+
 5. **"EPA workbook loaded" notice → info, not a warning.** A short line by the result count ("880 products · EPA data as of …"), full details in the footer and the Sources tab. The "N records lack ingredients" warning becomes a flag on those records.
 6. **Bits UI** (`bits-ui`, as in the v1 project) where it fits: `Select` for sort and the single-choice filters, `ToggleGroup` for the view pill, `Accordion`/`Collapsible` for the filter groups, possibly a `Combobox`/`Popover` multi-select for crop sites, `Tooltip` for terse labels. Keep native elements where they work better (e.g. print). Keyboard and screen-reader behaviour must stay at least as good. The standalone single file must stay self-contained.
 7. **Before/after screenshots** at 1440 and 390 px for the user's review, plus updated e2e coverage for both views.

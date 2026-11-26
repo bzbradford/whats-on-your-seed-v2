@@ -1,6 +1,6 @@
 /* ?embed: compact layout for iframes. Minimal until Phase 4. */
-html[data-view='embed'] header,
-html[data-view='embed'] .hero {
+/* The page header is hidden; the hero becomes a slim banner (App.svelte). */
+html[data-view='embed'] header {
   display: none;
 }
 html[data-view='embed'] {

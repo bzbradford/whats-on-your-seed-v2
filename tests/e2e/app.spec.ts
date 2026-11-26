@@ -698,6 +698,44 @@ test.describe('before the catalog loads', () => {
   });
 });
 
+test.describe('hero and tabs (4a.4)', () => {
+  test('the title is on one line and the step strip is gone', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await open(page);
+    await expect(page.locator('.start-strip')).toHaveCount(0);
+    const lines = await page.locator('.hero h1').evaluate((h) => {
+      const r = document.createRange();
+      r.selectNodeContents(h);
+      return new Set([...r.getClientRects()].map((x) => Math.round(x.top))).size;
+    });
+    expect(lines).toBe(1);
+    expect((await page.locator('.hero').boundingBox())!.height).toBeLessThan(360);
+  });
+
+  test('phones: the tabs are one row that scrolls sideways', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await open(page);
+    const tops = await page
+      .locator('[role=tab]')
+      .evaluateAll(
+        (tabs) => new Set(tabs.map((t) => Math.round(t.getBoundingClientRect().top))).size,
+      );
+    expect(tops).toBe(1);
+    expect(await page.locator('.tabs').evaluate((e) => e.scrollWidth > e.clientWidth)).toBe(true);
+    await page.locator('#tab-data').click();
+    const box = (await page.locator('#tab-data').boundingBox())!;
+    expect(box.x + box.width).toBeLessThanOrEqual(390);
+  });
+
+  test('?embed shows a slim banner instead of the full hero', async ({ page }) => {
+    await open(page, './?embed');
+    await expect(page.locator('.hero h1')).toBeVisible();
+    await expect(page.locator('.hero p')).toBeHidden();
+    await expect(page.locator('.hero-actions')).toBeHidden();
+    expect((await page.locator('.hero').boundingBox())!.height).toBeLessThan(90);
+  });
+});
+
 test.describe('hero', () => {
   for (const width of [1280, 390])
     test(`uses the full width without the removed art (${width}px)`, async ({ page }) => {
@@ -720,10 +758,9 @@ test.describe('hero', () => {
 });
 
 test.describe('embedding', () => {
-  test('?embed hides the page header and hero', async ({ page }) => {
+  test('?embed hides the page header', async ({ page }) => {
     await open(page, './?embed');
     await expect(page.locator('header')).toBeHidden();
-    await expect(page.locator('.hero')).toBeHidden();
     await expect(page.locator('#count')).toHaveText('880 products');
   });
 
