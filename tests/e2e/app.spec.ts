@@ -23,6 +23,18 @@ async function choose(page: Page, id: string, option: string) {
   await expect(page.getByRole('listbox')).toHaveCount(0);
 }
 
+/** Open the products toolbar's Download menu. */
+async function openDownloads(page: Page) {
+  await page.locator('#download-menu').click();
+  await expect(page.getByRole('menu')).toBeVisible();
+}
+
+/** Close an open menu with Escape. */
+async function closeMenu(page: Page) {
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('menu')).toHaveCount(0);
+}
+
 const isFocused = (page: Page, selector: string) =>
   page.locator(selector).evaluate((e) => e === document.activeElement);
 
@@ -142,7 +154,9 @@ test.describe('products', () => {
     await expect(page.locator('#start')).toHaveAttribute('aria-invalid', 'true');
     await expect(page.locator('#results')).toContainText('Start date is after end date.');
     await expect(page.locator('#pager')).toBeHidden();
+    await openDownloads(page);
     await expect(page.locator('#export-labels')).toBeDisabled();
+    await closeMenu(page);
     await expect(page.locator('#a11y-alert')).toHaveText(
       'Start date must be on or before the end date.',
     );
@@ -155,7 +169,9 @@ test.describe('products', () => {
     await page.locator('#query').fill('no-product-matches-xyz');
     await expect(page.locator('#count')).toHaveText('0 products');
     await expect(page.locator('#results')).toContainText('No matching products.');
+    await openDownloads(page);
     await expect(page.locator('#export-labels')).toBeDisabled();
+    await closeMenu(page);
     await page.locator('[data-reset]').click();
     await expect(page.locator('#count')).toHaveText('880 products');
     await expect(page.locator('#query')).toBeFocused();
@@ -216,15 +232,19 @@ test.describe('products', () => {
 
   test('exports: label links (filtered and all) and results CSV', async ({ page }) => {
     await page.locator('#query').fill('5905-491-38167');
-    await expect(page.locator('#export')).toHaveText('Export results');
-    await expect(page.locator('#export-labels')).toHaveText('Export label links');
+    await openDownloads(page);
+    await expect(page.locator('#export')).toContainText('Results (CSV)');
+    await expect(page.locator('#export-labels')).toContainText('Label links (CSV)');
+    await expect(page.locator('#print-results')).toHaveText('Print this view');
     const filtered = await downloadText(page, () => page.locator('#export-labels').click());
     expect(filtered.split('\r\n')).toHaveLength(2);
     expect(filtered).toContain('Lookup required');
     await expect(page.locator('#toast')).toContainText('1 product exported in the label-link CSV');
     await page.locator('#reset').click();
+    await openDownloads(page);
     const all = await downloadText(page, () => page.locator('#export-labels').click());
     expect(all.split('\r\n')).toHaveLength(fixture.products.length + 1);
+    await openDownloads(page);
     const results = await downloadText(page, () => page.locator('#export').click());
     expect(results.charCodeAt(0)).toBe(0xfeff);
     expect(results).toContain('Workbook created');
@@ -359,6 +379,23 @@ test.describe('filter controls: keyboard and screen readers', () => {
     await page.getByRole('option', { name: 'Signal word, most severe first' }).click();
     await page.getByRole('radio', { name: 'List' }).click();
     await expect(page.locator('thead th.col-signal')).toHaveAttribute('aria-sort', 'descending');
+  });
+
+  test('the Download menu works from the keyboard', async ({ page }) => {
+    const trigger = page.getByRole('button', { name: 'Download' });
+    await expect(trigger).toHaveAttribute('aria-haspopup', 'menu');
+    await trigger.focus();
+    await page.keyboard.press('Enter');
+    const menu = page.getByRole('menu');
+    await expect(menu).toBeVisible();
+    await expect(menu.getByRole('menuitem')).toHaveCount(3);
+    await page.keyboard.press('ArrowDown');
+    await expect(page.locator('#export-labels')).toHaveAttribute('data-highlighted', '');
+    const download = page.waitForEvent('download');
+    await page.keyboard.press('Enter');
+    expect((await download).suggestedFilename()).toMatch(/^CPN-label-links-/);
+    await expect(menu).toHaveCount(0);
+    await expect(trigger).toBeFocused();
   });
 
   test('terse list headers explain themselves on focus', async ({ page }) => {
@@ -617,46 +654,45 @@ test.describe('guides and sources', () => {
   for (const view of ['products', 'ingredients', 'guide', 'data'])
     test(`Print this view prints the ${view} tab with the disclaimer`, async ({ page }) => {
       await page.locator(`#tab-${view}`).click();
-      await page.emulateMedia({ media: 'print' });
-      const printed = await page.evaluate((id) => {
-        let state: Record<string, unknown> = {};
-        const shown = (sel: string) => {
-          const el = document.querySelector(sel);
-          return !!el && getComputedStyle(el).display !== 'none';
-        };
+      // What is open at the moment of printing (then restored).
+      await page.evaluate(() => {
         window.print = () => {
-          state = {
-            panel: shown(`#${id}`),
-            content: shown(
-              {
-                products: '.workspace',
-                ingredients: '.ingredient-grid',
-                guide: '.guide-grid',
-                data: '.data-grid',
-              }[id]!,
-            ),
-            filters: shown('#filters'),
-            footer: shown('footer.disclaimer'),
+          (window as unknown as { printState: unknown }).printState = {
             disclaimerOpen: (document.getElementById('tool-disclaimer') as HTMLDetailsElement).open,
             labelAboutOpen: (document.querySelector('.label-about') as HTMLDetailsElement).open,
-            button: shown(`#${id} .print-view`),
           };
         };
-        (document.querySelector(`#${id} .print-view`) as HTMLButtonElement).click();
-        return state;
-      }, view);
-      expect(printed).toEqual({
-        panel: true,
-        content: true,
-        filters: false,
-        footer: true,
-        disclaimerOpen: true,
-        labelAboutOpen: view === 'products',
-        button: false,
       });
+      // Products: the Download menu; the other tabs keep a small Print this view button.
+      if (view === 'products') {
+        await openDownloads(page);
+        await page.locator('#print-results').click();
+      } else await page.locator(`#${view} .print-view`).click();
+      expect(
+        await page.evaluate(() => (window as unknown as { printState: unknown }).printState),
+      ).toEqual({ disclaimerOpen: true, labelAboutOpen: view === 'products' });
       expect(
         await page.locator('#tool-disclaimer').evaluate((e) => (e as HTMLDetailsElement).open),
       ).toBe(false);
+      // The print layout shows this view's content and hides the controls.
+      await page.emulateMedia({ media: 'print' });
+      const shown = (sel: string) =>
+        page.evaluate((s) => {
+          const el = document.querySelector(s);
+          return !!el && getComputedStyle(el).display !== 'none';
+        }, sel);
+      const content = {
+        products: '.workspace',
+        ingredients: '.ingredient-grid',
+        guide: '.guide-grid',
+        data: '.data-grid',
+      }[view]!;
+      expect(await shown(`#${view}`)).toBe(true);
+      expect(await shown(content)).toBe(true);
+      expect(await shown('#filters')).toBe(false);
+      expect(await shown('footer.disclaimer')).toBe(true);
+      expect(await shown(view === 'products' ? '.download' : `#${view} .print-view`)).toBe(false);
+      await page.emulateMedia({ media: 'screen' });
     });
 
   test('the dialog links to the treatment guide', async ({ page }) => {
@@ -724,8 +760,7 @@ test.describe('mobile', () => {
     await page.locator('#mobile-filter').click();
     await page.locator('#apply-filters').click();
     await expect(page.locator('#count')).toBeFocused();
-    await expect(page.locator('#export')).toBeVisible();
-    await expect(page.locator('#export-labels')).toBeVisible();
+    await expect(page.locator('#download-menu')).toBeVisible();
     await expect(page.locator('.crop-text').first()).toBeVisible();
     await expect(page.locator('.product .label-action').first()).toBeVisible();
     await page.setViewportSize({ width: 320, height: 844 });
@@ -772,12 +807,16 @@ test.describe('before the catalog loads', () => {
     await page.goto('./');
     await expect(page.locator('#notice')).toHaveText('Loading the database…');
     await expect(page.locator('#pager')).toBeHidden();
+    await openDownloads(page);
     await expect(page.locator('#export')).toBeDisabled();
     await expect(page.locator('#export-labels')).toBeDisabled();
+    await closeMenu(page);
     release();
     await expect(page.locator('#count')).toHaveText('880 products');
     await expect(page.locator('#pager')).toBeVisible();
+    await openDownloads(page);
     await expect(page.locator('#export')).toBeEnabled();
+    await closeMenu(page);
   });
 });
 

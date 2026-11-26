@@ -21,10 +21,11 @@
   } from '../lib/filters';
   import { epaDataAsOf } from '../lib/currency';
   import { fmt, localDate } from '../lib/format';
+  import { printCurrentView } from '../lib/print';
   import { Accordion } from 'bits-ui';
   import FilterSelect, { type SelectOption } from './FilterSelect.svelte';
   import Icon from './Icon.svelte';
-  import PrintViewButton from './PrintViewButton.svelte';
+  import DownloadMenu from './DownloadMenu.svelte';
   import ProductCard from './ProductCard.svelte';
   import ProductList from './ProductList.svelte';
   import ViewToggle from './ViewToggle.svelte';
@@ -393,17 +394,12 @@
             options={SORT_OPTIONS}
             bind:value={app.filters.sort as string}
           />
-          <button id="export" class="export" disabled={!ready || !n} onclick={exportResults}>
-            <Icon name="download" />Export results
-          </button><button
-            id="export-labels"
-            class="export"
-            aria-describedby="label-help"
-            disabled={!ready || !n}
-            onclick={exportLabels}
-          >
-            <Icon name="download" />Export label links
-          </button><PrintViewButton />
+          <DownloadMenu
+            canExport={ready && n > 0}
+            onResults={exportResults}
+            onLabels={exportLabels}
+            onPrint={() => printCurrentView(app.view)}
+          />
         </div>
       </div>
       <div id="applied" class="applied" role="group" aria-label="Applied product filters">

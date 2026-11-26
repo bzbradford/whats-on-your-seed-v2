@@ -146,7 +146,7 @@ Goal: make the products view scannable and the page less tall, keep the Oct 19 c
 
 1. [x] Products column order: heading and intro, the label explanation, the search directly above the results, then one results toolbar row (count · "EPA data as of …" · Cards/List pill · Sort · Download menu), then the results.
 2. [x] The label explanation becomes a collapsed "About label links" disclosure under the intro (closed by default at all widths, open in print). A native `<details>`: "Print this view" opens it; a browser print of a closed disclosure leaves it closed (Chrome can't show closed `<details>` content from CSS).
-3. [ ] Export and print become one compact "Download ▾" menu (Bits `DropdownMenu`) in the toolbar row.
+3. [x] Export and print become one compact "Download ▾" menu (Bits `DropdownMenu`) in the toolbar row. Items keep the old ids (`#export`, `#export-labels`, `#print-results`), toasts and the disabled-before-load state. The Ingredient guide, Treatment guide and Sources tabs keep their single small "Print this view" button (a one-item menu would only add a click).
 4. [ ] Sticky stack instead of an inner scroll panel: the tab bar pins as a thinner header once scrolled past; the search and toolbar row pin under it on desktop; the filter sidebar sits below both; on phones only the tab bar pins; about 110 px pinned on desktop; anchors and focus land below the pinned header. In `?embed` only, the results may scroll inside a panel sized to the iframe.
 5. [ ] Card view caps ingredients like the List (first three + "N more"; all in the dialog).
 6. [ ] List view: the Purpose column wraps at slashes or spaces, never mid-word.
